@@ -1,0 +1,45 @@
+# ═══════════════════════════════════════════════════════════════
+# requirements_ml_cpu.txt
+# ML Pipeline — CPU version (no NVIDIA GPU required)
+#
+# PYTHON VERSION: 3.10.x
+#
+# INSTALL — copy-paste these commands in order:
+#
+#   Step 1 — PyTorch CPU (must be first, ~200 MB):
+#   pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cpu
+#
+#   Step 2 — All other ML dependencies:
+#   pip install -r requirements_ml_cpu.txt
+#
+#   Step 3 — TensorFlow with --no-deps (prevents overwriting torch):
+#   pip install tensorflow==2.16.1 --no-deps
+#   pip install keras==3.4.1 absl-py==2.1.0 astunparse==1.6.3 gast==0.5.4 google-pasta==0.2.0 h5py==3.11.0 opt-einsum==3.3.0 termcolor==2.4.0 wrapt==1.16.0 grpcio==1.64.1 flatbuffers==24.3.25 ml-dtypes==0.4.0
+#
+# Total download size: ~1.5 GB (vs ~6 GB for GPU version)
+# ═══════════════════════════════════════════════════════════════
+
+# ── Model architecture alternative (no torchvision needed) ─────
+timm==1.0.9
+
+# ── Data science ─────────────────────────────────────────────────
+numpy==1.26.4
+pandas==2.2.2
+scikit-learn==1.5.1
+matplotlib==3.8.4
+Pillow==10.4.0
+
+# ── ONNX export chain ────────────────────────────────────────────
+onnx==1.16.0
+onnxruntime==1.18.0
+onnx2tf==1.26.3
+onnxsim==0.4.30
+opencv-python==4.10.0.84
+
+# ── CRITICAL: pin protobuf — prevents torch/tensorflow conflict ──
+protobuf==4.25.3
+
+# ── Progress + utilities ─────────────────────────────────────────
+tqdm==4.66.4
+requests==2.32.3
+seaborn==0.13.2

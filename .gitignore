@@ -1,0 +1,31 @@
+# Flutter
+build/
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+
+# Android/iOS
+android/.gradle/
+android/app/build/
+ios/Pods/
+
+# Python
+__pycache__/
+*.pyc
+
+# ML models (CRITICAL)
+*.pt
+*.pth
+*.onnx
+*.tflite
+
+# Datasets
+data/
+datasets/
+*.zip
+*.tar
+
+# Misc
+.DS_Store
+Thumbs.db
