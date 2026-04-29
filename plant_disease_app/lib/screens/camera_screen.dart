@@ -11,7 +11,6 @@ import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../services/ml_service.dart';
 import '../services/sync_service.dart';
-import '../core/constants.dart';
 import '../models/models.dart';
 import 'result_screen.dart';
 
@@ -84,8 +83,13 @@ class _CameraScreenState extends State<CameraScreen> {
               ResultScreen(prediction: prediction, imageFile: _selectedImage!),
         ),
       );
-    } catch (e) {
-      _showSnackBar('Analysis failed. Please try again.');
+    } catch (e, st) {
+      debugPrint('Analysis failed: $e');
+      debugPrintStack(stackTrace: st);
+      final message = e is AppException
+          ? e.message
+          : 'Analysis failed. Please try again.';
+      _showSnackBar(message);
     } finally {
       if (mounted) setState(() => _isAnalyzing = false);
     }
@@ -157,10 +161,10 @@ class _CameraScreenState extends State<CameraScreen> {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: scheme.primary.withOpacity(0.4),
+                    color: scheme.primary.withValues(alpha: 0.4),
                     width: 2,
                   ),
-                  color: scheme.primary.withOpacity(0.05),
+                  color: scheme.primary.withValues(alpha: 0.05),
                 ),
                 child: _selectedImage != null
                     ? ClipRRect(
@@ -173,13 +177,13 @@ class _CameraScreenState extends State<CameraScreen> {
                           Icon(
                             Icons.add_photo_alternate_rounded,
                             size: 64,
-                            color: scheme.primary.withOpacity(0.5),
+                            color: scheme.primary.withValues(alpha: 0.5),
                           ),
                           const SizedBox(height: 12),
                           Text(
                             l10n['no_image_selected'],
                             style: TextStyle(
-                              color: scheme.primary.withOpacity(0.7),
+                              color: scheme.primary.withValues(alpha: 0.7),
                               fontSize: 16,
                             ),
                           ),
@@ -187,7 +191,7 @@ class _CameraScreenState extends State<CameraScreen> {
                           Text(
                             'Tap to select from gallery',
                             style: TextStyle(
-                              color: scheme.onSurface.withOpacity(0.4),
+                              color: scheme.onSurface.withValues(alpha: 0.4),
                               fontSize: 12,
                             ),
                           ),

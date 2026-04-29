@@ -25,16 +25,15 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _controller = TextEditingController();
-  final ScrollController      _scroll     = ScrollController();
-  final List<ChatMessage>     _messages   = [];
-  bool _isTyping    = false;
+  final ScrollController _scroll = ScrollController();
+  final List<ChatMessage> _messages = [];
+  bool _isTyping = false;
   bool _isListening = false;
 
   @override
   void initState() {
     super.initState();
     _loadHistory();
-    _sendWelcome();
   }
 
   @override
@@ -48,17 +47,23 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _loadHistory() async {
     final history = await LocalDatabase.instance.getChatHistory();
-    if (history.isNotEmpty && mounted) {
+    if (!mounted) return;
+
+    if (history.isNotEmpty) {
       setState(() => _messages.addAll(history));
       _scrollToBottom();
+      return;
     }
+
+    _sendWelcome();
   }
 
   void _sendWelcome() {
     final lang = context.read<AppProvider>().languageCode;
     Future.delayed(const Duration(milliseconds: 400), () async {
       final greeting = await ChatbotService.instance.generateReply(
-        'hello', languageCode: lang,
+        'hello',
+        languageCode: lang,
       );
       _addMessage(ChatMessage(text: greeting, role: MessageRole.assistant));
       await TTSService.instance.speak(greeting, languageCode: lang);
@@ -76,7 +81,6 @@ class _ChatScreenState extends State<ChatScreen> {
     // User message
     final userMsg = ChatMessage(text: text, role: MessageRole.user);
     _addMessage(userMsg);
-    await LocalDatabase.instance.saveMessage(userMsg);
 
     // Show typing indicator
     setState(() => _isTyping = true);
@@ -84,20 +88,22 @@ class _ChatScreenState extends State<ChatScreen> {
     try {
       // Generate reply
       final reply = await ChatbotService.instance.generateReply(
-        text, languageCode: lang,
+        text,
+        languageCode: lang,
       );
 
       final botMsg = ChatMessage(text: reply, role: MessageRole.assistant);
       _addMessage(botMsg);
-      await LocalDatabase.instance.saveMessage(botMsg);
 
       // Speak the reply
       await TTSService.instance.speak(reply, languageCode: lang);
     } catch (e) {
-      _addMessage(ChatMessage(
-        text: 'Sorry, I could not process that. Please try again.',
-        role: MessageRole.assistant,
-      ));
+      _addMessage(
+        ChatMessage(
+          text: 'Sorry, I could not process that. Please try again.',
+          role: MessageRole.assistant,
+        ),
+      );
     } finally {
       if (mounted) setState(() => _isTyping = false);
     }
@@ -130,9 +136,9 @@ class _ChatScreenState extends State<ChatScreen> {
     }
 
     final lang = context.read<AppProvider>().languageCode;
-  
+
     await STTService.instance.startListening(
-      (String text) {
+      onResult: (String text) {
         if (text.isNotEmpty) {
           _controller.text = text;
           _sendMessage();
@@ -146,12 +152,12 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n   = context.watch<AppProvider>().l10n;
+    final l10n = context.watch<AppProvider>().l10n;
     final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(l10n['chat_assistant'] ?? 'Chat Assistant'),
+        title: Text(l10n['chat_assistant']),
         actions: [
           IconButton(
             icon: const Icon(Icons.delete_outline),
@@ -178,17 +184,19 @@ class _ChatScreenState extends State<ChatScreen> {
                         Text(
                           'Ask me anything about farming!',
                           style: TextStyle(
-                            color: scheme.onSurface.withOpacity(0.5),
+                            color: scheme.onSurface.withValues(alpha: 0.5),
                           ),
                         ),
                       ],
                     ),
                   )
                 : ListView.builder(
-                    controller:  _scroll,
-                    padding:     const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 8),
-                    itemCount:   _messages.length + (_isTyping ? 1 : 0),
+                    controller: _scroll,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    itemCount: _messages.length + (_isTyping ? 1 : 0),
                     itemBuilder: (context, index) {
                       if (index == _messages.length) {
                         return const _TypingBubble();
@@ -204,22 +212,30 @@ class _ChatScreenState extends State<ChatScreen> {
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               scrollDirection: Axis.horizontal,
-              children: [
-                'Crop for sandy soil 🌾',
-                'Tomato disease 🍅',
-                'Best fertilizer 🌱',
-                'Water schedule 💧',
-                'Wheat blight 🌾',
-              ].map((q) => Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: ActionChip(
-                  label: Text(q, style: const TextStyle(fontSize: 12)),
-                  onPressed: () {
-                    _controller.text = q;
-                    _sendMessage();
-                  },
-                ),
-              )).toList(),
+              children:
+                  [
+                        'Crop for sandy soil 🌾',
+                        'Tomato disease 🍅',
+                        'Best fertilizer 🌱',
+                        'Water schedule 💧',
+                        'Wheat blight 🌾',
+                      ]
+                      .map(
+                        (q) => Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: ActionChip(
+                            label: Text(
+                              q,
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                            onPressed: () {
+                              _controller.text = q;
+                              _sendMessage();
+                            },
+                          ),
+                        ),
+                      )
+                      .toList(),
             ),
           ),
 
@@ -232,7 +248,7 @@ class _ChatScreenState extends State<ChatScreen> {
               color: scheme.surface,
               boxShadow: [
                 BoxShadow(
-                  color:  Colors.black.withOpacity(0.06),
+                  color: Colors.black.withValues(alpha: 0.06),
                   blurRadius: 8,
                   offset: const Offset(0, -2),
                 ),
@@ -246,7 +262,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: _isListening
-                        ? Colors.red.withOpacity(0.15)
+                        ? Colors.red.withValues(alpha: 0.15)
                         : Colors.transparent,
                   ),
                   child: IconButton(
@@ -263,25 +279,27 @@ class _ChatScreenState extends State<ChatScreen> {
                   child: TextField(
                     controller: _controller,
                     decoration: InputDecoration(
-                      hintText:    l10n['chat_placeholder'] ?? 'Type a message...',
-                      filled:      true,
-                      fillColor:   scheme.surface,
+                      hintText: l10n['chat_placeholder'],
+                      filled: true,
+                      fillColor: scheme.surface,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(24),
                         borderSide: BorderSide(
-                          color: scheme.primary.withOpacity(0.3),
+                          color: scheme.primary.withValues(alpha: 0.3),
                         ),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(24),
                         borderSide: BorderSide(
-                          color: scheme.primary.withOpacity(0.2),
+                          color: scheme.primary.withValues(alpha: 0.2),
                         ),
                       ),
                       contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 10),
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
                     ),
-                    maxLines:   null,
+                    maxLines: null,
                     textCapitalization: TextCapitalization.sentences,
                     onSubmitted: (_) => _sendMessage(),
                   ),
@@ -291,7 +309,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
                 // Send button
                 FloatingActionButton.small(
-                  onPressed:       _sendMessage,
+                  onPressed: _sendMessage,
                   backgroundColor: scheme.primary,
                   child: const Icon(Icons.send_rounded, color: Colors.white),
                 ),
@@ -311,8 +329,8 @@ class _MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isUser  = message.isUser;
-    final scheme  = Theme.of(context).colorScheme;
+    final isUser = message.isUser;
+    final scheme = Theme.of(context).colorScheme;
 
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
@@ -323,13 +341,11 @@ class _MessageBubble extends StatelessWidget {
           maxWidth: MediaQuery.of(context).size.width * 0.78,
         ),
         decoration: BoxDecoration(
-          color: isUser
-              ? scheme.primary
-              : scheme.surfaceContainerHighest,
+          color: isUser ? scheme.primary : scheme.surfaceContainerHighest,
           borderRadius: BorderRadius.only(
-            topLeft:     const Radius.circular(18),
-            topRight:    const Radius.circular(18),
-            bottomLeft:  Radius.circular(isUser ? 18 : 4),
+            topLeft: const Radius.circular(18),
+            topRight: const Radius.circular(18),
+            bottomLeft: Radius.circular(isUser ? 18 : 4),
             bottomRight: Radius.circular(isUser ? 4 : 18),
           ),
         ),
@@ -339,7 +355,7 @@ class _MessageBubble extends StatelessWidget {
             Text(
               message.text,
               style: TextStyle(
-                color:  isUser ? Colors.white : scheme.onSurface,
+                color: isUser ? Colors.white : scheme.onSurface,
                 height: 1.5,
               ),
             ),
@@ -347,9 +363,9 @@ class _MessageBubble extends StatelessWidget {
             Text(
               _formatTime(message.timestamp),
               style: TextStyle(
-                color:    isUser
+                color: isUser
                     ? Colors.white70
-                    : scheme.onSurface.withOpacity(0.45),
+                    : scheme.onSurface.withValues(alpha: 0.45),
                 fontSize: 10,
               ),
             ),
@@ -382,7 +398,7 @@ class _TypingBubbleState extends State<_TypingBubble>
   void initState() {
     super.initState();
     _ctrl = AnimationController(
-      vsync:    this,
+      vsync: this,
       duration: const Duration(milliseconds: 900),
     )..repeat(reverse: true);
   }
@@ -402,29 +418,32 @@ class _TypingBubbleState extends State<_TypingBubble>
         margin: const EdgeInsets.symmetric(vertical: 4),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color:        scheme.surfaceContainerHighest,
+          color: scheme.surfaceContainerHighest,
           borderRadius: const BorderRadius.only(
-            topLeft:    Radius.circular(18),
-            topRight:   Radius.circular(18),
-            bottomRight:Radius.circular(18),
+            topLeft: Radius.circular(18),
+            topRight: Radius.circular(18),
+            bottomRight: Radius.circular(18),
             bottomLeft: Radius.circular(4),
           ),
         ),
         child: AnimatedBuilder(
           animation: _ctrl,
-          builder: (_, __) => Row(
+          builder: (context, child) => Row(
             mainAxisSize: MainAxisSize.min,
-            children: List.generate(3, (i) => Container(
-              margin: const EdgeInsets.symmetric(horizontal: 2),
-              width:  8,
-              height: 8,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: scheme.primary.withOpacity(
-                  0.3 + 0.7 * ((_ctrl.value + i / 3) % 1),
+            children: List.generate(
+              3,
+              (i) => Container(
+                margin: const EdgeInsets.symmetric(horizontal: 2),
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: scheme.primary.withValues(
+                    alpha: 0.3 + 0.7 * ((_ctrl.value + i / 3) % 1),
+                  ),
                 ),
               ),
-            )),
+            ),
           ),
         ),
       ),

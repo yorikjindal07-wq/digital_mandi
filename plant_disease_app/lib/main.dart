@@ -15,7 +15,7 @@ import 'services/ml_service.dart';
 import 'services/chatbot_service.dart';
 import 'services/sync_service.dart';
 import 'services/voice_services.dart';
-import 'data/local_db.dart';
+import 'data/local_db.dart' as local_db;
 import 'providers/app_provider.dart';
 import 'screens/home_screen.dart';
 
@@ -30,6 +30,20 @@ void main() async {
 
   // Init local storage
   await Hive.initFlutter();
+  // Init SQLite database
+  await local_db.LocalDatabase.instance.db;
+
+  if (!AppConstants.hasOpenWeatherApiKey) {
+    debugPrint(
+      'Weather API key not configured. Live weather will use cached/offline data.',
+    );
+  }
+
+  if (!AppConstants.hasBackendBaseUrl) {
+    debugPrint(
+      'Backend URL not configured. Report sync will stay in offline mode.',
+    );
+  }
 
   // Init ML models — non-fatal: app works in offline mode without models
   try {
@@ -57,18 +71,16 @@ class DigitalMandiApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => AppProvider()),
-      ],
+      providers: [ChangeNotifierProvider(create: (_) => AppProvider())],
       child: Consumer<AppProvider>(
         builder: (context, provider, _) {
           return MaterialApp(
-            title: 'Digital Mandi',
+            title: provider.l10n['app_name'],
             debugShowCheckedModeBanner: false,
-            theme:      AppTheme.light,
-            darkTheme:  AppTheme.dark,
-            themeMode:  provider.themeMode,
-            home:       const HomeScreen(),
+            theme: AppTheme.light,
+            darkTheme: AppTheme.dark,
+            themeMode: provider.themeMode,
+            home: const HomeScreen(),
           );
         },
       ),

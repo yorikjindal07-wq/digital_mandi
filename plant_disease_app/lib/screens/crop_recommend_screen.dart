@@ -144,19 +144,24 @@ class _CropRecommendScreenState extends State<CropRecommendScreen> {
 
       // Temperature match
       if (_temperature >= (crop['minTemp'] as double) &&
-          _temperature <= (crop['maxTemp'] as double))
+          _temperature <= (crop['maxTemp'] as double)) {
         score += 25;
-      else
+      } else {
         score += 5;
+      }
 
       // Rainfall match
-      if (_rainfall >= (crop['minRain'] as double)) score += 20;
+      if (_rainfall >= (crop['minRain'] as double)) {
+        score += 20;
+      }
 
       // pH match
-      if (_ph >= (crop['minPh'] as double) && _ph <= (crop['maxPh'] as double))
+      if (_ph >= (crop['minPh'] as double) &&
+          _ph <= (crop['maxPh'] as double)) {
         score += 25;
-      else
+      } else {
         score += 5;
+      }
 
       // Soil nutrient balance
       if (_nitrogen > 60) score += 10;
@@ -202,7 +207,7 @@ class _CropRecommendScreenState extends State<CropRecommendScreen> {
           ph: _ph,
           rainfall: _rainfall,
         );
-        final topCrops = await MLService.instance.recommendCrops(input);
+        await MLService.instance.recommendCrops(input);
         // topCrops are indices — map them to crop database
         results = _ruleBasedRecommend(); // fallback for now
       } catch (e) {
@@ -233,17 +238,17 @@ class _CropRecommendScreenState extends State<CropRecommendScreen> {
           children: [
             // ── Info banner ──────────────────────
             Card(
-              color: const Color(0xFF2E7D32).withOpacity(0.1),
+              color: const Color(0xFF2E7D32).withValues(alpha: 0.1),
               child: Padding(
                 padding: const EdgeInsets.all(12),
                 child: Row(
-                  children: const [
+                  children: [
                     Text('🌱', style: TextStyle(fontSize: 24)),
-                    SizedBox(width: 10),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        'Enter your soil and climate data below to get AI-powered crop suggestions.',
-                        style: TextStyle(fontSize: 13),
+                        l10n['crop_intro'],
+                        style: const TextStyle(fontSize: 13),
                       ),
                     ),
                   ],
@@ -320,7 +325,9 @@ class _CropRecommendScreenState extends State<CropRecommendScreen> {
                     )
                   : const Icon(Icons.auto_awesome),
               label: Text(
-                _isLoading ? 'Analyzing...' : l10n['get_recommendation'],
+                _isLoading
+                    ? l10n['analyzing_short']
+                    : l10n['get_recommendation'],
               ),
             ),
 
@@ -394,14 +401,14 @@ class _CropResultCard extends StatelessWidget {
       const Color(0xFFFFD700), // gold
       const Color(0xFFC0C0C0), // silver
       const Color(0xFFCD7F32), // bronze
-      scheme.primary.withOpacity(0.3),
+      scheme.primary.withValues(alpha: 0.3),
     ];
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: ExpansionTile(
         leading: CircleAvatar(
-          backgroundColor: colors[rank - 1].withOpacity(0.2),
+          backgroundColor: colors[rank - 1].withValues(alpha: 0.2),
           child: Text(
             crop['emoji'] as String,
             style: const TextStyle(fontSize: 22),

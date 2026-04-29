@@ -11,11 +11,11 @@ import '../core/constants.dart';
 import '../providers/app_provider.dart';
 
 const Map<String, Map<String, String>> _languageInfo = {
-  'en': {'label': 'English',  'native': 'English',  'flag': '🇮🇳'},
-  'hi': {'label': 'Hindi',    'native': 'हिंदी',     'flag': '🇮🇳'},
-  'pa': {'label': 'Punjabi',  'native': 'ਪੰਜਾਬੀ',    'flag': '🇮🇳'},
-  'mr': {'label': 'Marathi',  'native': 'मराठी',     'flag': '🇮🇳'},
-  'te': {'label': 'Telugu',   'native': 'తెలుగు',    'flag': '🇮🇳'},
+  'en': {'label': 'English', 'native': 'English', 'flag': '🇮🇳'},
+  'hi': {'label': 'Hindi', 'native': 'हिंदी', 'flag': '🇮🇳'},
+  'pa': {'label': 'Punjabi', 'native': 'ਪੰਜਾਬੀ', 'flag': '🇮🇳'},
+  'mr': {'label': 'Marathi', 'native': 'मराठी', 'flag': '🇮🇳'},
+  'te': {'label': 'Telugu', 'native': 'తెలుగు', 'flag': '🇮🇳'},
 };
 
 // ── Compact icon button for AppBar ────────────
@@ -25,55 +25,64 @@ class LanguageSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
-    final current  = provider.languageCode;
+    final current = provider.languageCode;
+    final iconColor =
+        Theme.of(context).appBarTheme.iconTheme?.color ??
+        Theme.of(context).colorScheme.onSurface;
 
     return PopupMenuButton<String>(
-      tooltip:       'Change Language',
-      initialValue:  current,
+      tooltip: provider.l10n['change_language'],
+      initialValue: current,
       icon: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.language, color: Colors.white, size: 20),
+          Icon(Icons.language, color: iconColor, size: 20),
           const SizedBox(width: 4),
           Text(
             current.toUpperCase(),
-            style: const TextStyle(
-              color:      Colors.white,
-              fontSize:   12,
+            style: TextStyle(
+              color: iconColor,
+              fontSize: 12,
               fontWeight: FontWeight.w700,
             ),
           ),
         ],
       ),
       onSelected: (code) => provider.setLanguage(code),
-      itemBuilder: (_) => AppConstants.supportedLanguages
-          .map((code) {
-            final info = _languageInfo[code]!;
-            return PopupMenuItem<String>(
-              value: code,
-              child: Row(
+      itemBuilder: (_) => AppConstants.supportedLanguages.map((code) {
+        final info = _languageInfo[code]!;
+        return PopupMenuItem<String>(
+          value: code,
+          child: Row(
+            children: [
+              Text(info['flag']!, style: const TextStyle(fontSize: 18)),
+              const SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(info['flag']!, style: const TextStyle(fontSize: 18)),
-                  const SizedBox(width: 10),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(info['native']!,
-                          style: const TextStyle(fontWeight: FontWeight.w600)),
-                      Text(info['label']!,
-                          style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                    ],
+                  Text(
+                    info['native']!,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
-                  if (code == current) ...[
-                    const Spacer(),
-                    Icon(Icons.check, color: Theme.of(context).colorScheme.primary, size: 18),
-                  ],
+                  Text(
+                    info['label']!,
+                    style: const TextStyle(fontSize: 11, color: Colors.grey),
+                  ),
                 ],
               ),
-            );
-          })
-          .toList(),
+              if (code == current) ...[
+                const Spacer(),
+                Icon(
+                  Icons.check,
+                  color: Theme.of(context).colorScheme.primary,
+                  size: 18,
+                ),
+              ],
+            ],
+          ),
+        );
+      }).toList(),
     );
   }
 }
@@ -85,19 +94,19 @@ class LanguageSelectorDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
-    final scheme   = Theme.of(context).colorScheme;
+    final scheme = Theme.of(context).colorScheme;
 
     return AlertDialog(
-      title: const Text('Select Language'),
+      title: Text(provider.l10n['select_language']),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: AppConstants.supportedLanguages.map((code) {
-          final info    = _languageInfo[code]!;
+          final info = _languageInfo[code]!;
           final current = provider.languageCode == code;
 
           return ListTile(
             leading: Text(info['flag']!, style: const TextStyle(fontSize: 24)),
-            title:   Text(
+            title: Text(
               info['native']!,
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
@@ -105,7 +114,7 @@ class LanguageSelectorDialog extends StatelessWidget {
             trailing: current
                 ? Icon(Icons.check_circle, color: scheme.primary)
                 : null,
-            tileColor: current ? scheme.primary.withOpacity(0.08) : null,
+            tileColor: current ? scheme.primary.withValues(alpha: 0.08) : null,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10),
             ),
@@ -119,13 +128,12 @@ class LanguageSelectorDialog extends StatelessWidget {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Close'),
+          child: Text(provider.l10n['close']),
         ),
       ],
     );
   }
 }
-
 
 // ─────────────────────────────────────────────
 // widgets/voice_button.dart
@@ -141,9 +149,9 @@ class VoiceButton extends StatefulWidget {
     this.size = 64,
   });
 
-  final bool         isListening;
+  final bool isListening;
   final VoidCallback onTap;
-  final double       size;
+  final double size;
 
   @override
   State<VoiceButton> createState() => _VoiceButtonState();
@@ -152,18 +160,19 @@ class VoiceButton extends StatefulWidget {
 class _VoiceButtonState extends State<VoiceButton>
     with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
-  late Animation<double>   _pulse;
+  late Animation<double> _pulse;
 
   @override
   void initState() {
     super.initState();
     _ctrl = AnimationController(
-      vsync:    this,
+      vsync: this,
       duration: const Duration(milliseconds: 800),
     )..repeat(reverse: true);
-    _pulse = Tween<double>(begin: 1.0, end: 1.2).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
-    );
+    _pulse = Tween<double>(
+      begin: 1.0,
+      end: 1.2,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
   }
 
   @override
@@ -175,7 +184,7 @@ class _VoiceButtonState extends State<VoiceButton>
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final color  = widget.isListening ? Colors.red : scheme.primary;
+    final color = widget.isListening ? Colors.red : scheme.primary;
 
     return GestureDetector(
       onTap: widget.onTap,
@@ -186,7 +195,7 @@ class _VoiceButtonState extends State<VoiceButton>
           child: child,
         ),
         child: Container(
-          width:  widget.size,
+          width: widget.size,
           height: widget.size,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
@@ -194,7 +203,7 @@ class _VoiceButtonState extends State<VoiceButton>
             boxShadow: widget.isListening
                 ? [
                     BoxShadow(
-                      color:      color.withOpacity(0.4),
+                      color: color.withValues(alpha: 0.4),
                       blurRadius: 20,
                       spreadRadius: 4,
                     ),
@@ -204,14 +213,13 @@ class _VoiceButtonState extends State<VoiceButton>
           child: Icon(
             widget.isListening ? Icons.mic : Icons.mic_none,
             color: Colors.white,
-            size:  widget.size * 0.45,
+            size: widget.size * 0.45,
           ),
         ),
       ),
     );
   }
 }
-
 
 // ─────────────────────────────────────────────
 // widgets/result_card.dart
@@ -230,13 +238,11 @@ class ResultCard extends StatelessWidget {
   final String diseaseName;
   final double confidence;
   final String treatment;
-  final bool   isHealthy;
+  final bool isHealthy;
 
   @override
   Widget build(BuildContext context) {
-    final color  = isHealthy ? Colors.green : Colors.red;
-    final scheme = Theme.of(context).colorScheme;
-
+    final color = isHealthy ? Colors.green : Colors.red;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -247,16 +253,16 @@ class ResultCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color:        color.withOpacity(0.12),
+                color: color.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(20),
-                border:       Border.all(color: color.withOpacity(0.3)),
+                border: Border.all(color: color.withValues(alpha: 0.3)),
               ),
               child: Text(
                 isHealthy ? '✅ Healthy' : '🚨 $diseaseName',
                 style: TextStyle(
-                  color:      color,
+                  color: color,
                   fontWeight: FontWeight.w700,
-                  fontSize:   16,
+                  fontSize: 16,
                 ),
               ),
             ),
@@ -267,14 +273,13 @@ class ResultCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Confidence',
-                    style: TextStyle(fontWeight: FontWeight.w600)),
+                const Text(
+                  'Confidence',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
                 Text(
                   '${(confidence * 100).toStringAsFixed(1)}%',
-                  style: TextStyle(
-                    color:      color,
-                    fontWeight: FontWeight.w800,
-                  ),
+                  style: TextStyle(color: color, fontWeight: FontWeight.w800),
                 ),
               ],
             ),
@@ -282,20 +287,17 @@ class ResultCard extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(6),
               child: LinearProgressIndicator(
-                value:           confidence,
-                minHeight:       10,
-                backgroundColor: color.withOpacity(0.12),
-                valueColor:      AlwaysStoppedAnimation(color),
+                value: confidence,
+                minHeight: 10,
+                backgroundColor: color.withValues(alpha: 0.12),
+                valueColor: AlwaysStoppedAnimation(color),
               ),
             ),
 
             const Divider(height: 24),
 
             // Treatment
-            Text(
-              treatment,
-              style: const TextStyle(fontSize: 14, height: 1.6),
-            ),
+            Text(treatment, style: const TextStyle(fontSize: 14, height: 1.6)),
           ],
         ),
       ),

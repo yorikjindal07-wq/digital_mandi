@@ -1,50 +1,14 @@
-// ─────────────────────────────────────────────
-// screens/result_screen.dart
-// Shows disease prediction result, confidence
-// bar, treatment recommendations, and lets
-// user hear the result via TTS.
-// ─────────────────────────────────────────────
-
+import 'dart:convert';
 import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '../providers/app_provider.dart';
-import '../services/voice_services.dart';
+
 import '../core/theme.dart';
 import '../models/models.dart';
-
-// ── Treatment data (mirrors JSON asset) ───────
-const Map<String, Map<String, String>> _treatments = {
-  'early_blight': {
-    'en':
-        'Apply Chlorothalonil 75WP @ 2g/L. Remove infected lower leaves. Spray every 7–10 days. Avoid wet foliage at night.',
-    'hi':
-        'क्लोरोथैलोनिल 75WP @ 2g/L लगाएं। संक्रमित पत्तियां हटाएं। 7-10 दिनों में एक बार स्प्रे करें।',
-    'pa':
-        'ਕਲੋਰੋਥੈਲੋਨਿਲ 75WP @ 2g/L ਲਗਾਓ। ਸੰਕ੍ਰਮਿਤ ਪੱਤੇ ਹਟਾਓ। 7-10 ਦਿਨਾਂ ਵਿੱਚ ਸਪ੍ਰੇ ਕਰੋ।',
-  },
-  'late_blight': {
-    'en':
-        'Apply Metalaxyl + Mancozeb @ 2.5g/L. Drain excess water from field. Spray copper fungicide preventively.',
-    'hi':
-        'मेटालैक्सिल + मैनकोज़ेब @ 2.5g/L लगाएं। खेत से अतिरिक्त पानी निकालें। कॉपर फंगीसाइड का छिड़काव करें।',
-    'pa': 'ਮੈਟਲਐਕਸਿਲ + ਮੈਨਕੋਜ਼ੇਬ @ 2.5g/L ਲਗਾਓ। ਖੇਤ ਤੋਂ ਪਾਣੀ ਕੱਢੋ।',
-  },
-  'leaf_mold': {
-    'en':
-        'Improve air circulation in greenhouse. Apply Sulfur dust @ 25kg/ha or Propiconazole @ 1ml/L.',
-    'hi':
-        'ग्रीनहाउस में वायु संचार सुधारें। सल्फर डस्ट @ 25kg/ha या प्रोपिकोनाज़ोल @ 1ml/L लगाएं।',
-    'pa':
-        'ਗ੍ਰੀਨਹਾਊਸ ਵਿੱਚ ਹਵਾ ਦੇ ਸੰਚਾਰ ਵਿੱਚ ਸੁਧਾਰ ਕਰੋ। ਸਲਫਰ ਧੂੜ @ 25kg/ha ਲਗਾਓ।',
-  },
-  'healthy': {
-    'en':
-        'No disease detected! Your plant is healthy. Continue regular monitoring and good farming practices.',
-    'hi': 'कोई रोग नहीं मिला! आपका पौधा स्वस्थ है। नियमित निगरानी जारी रखें।',
-    'pa': 'ਕੋਈ ਰੋਗ ਨਹੀਂ ਮਿਲਿਆ! ਤੁਹਾਡਾ ਪੌਦਾ ਸਿਹਤਮੰਦ ਹੈ।',
-  },
-};
+import '../providers/app_provider.dart';
+import '../services/voice_services.dart';
 
 class ResultScreen extends StatefulWidget {
   const ResultScreen({
@@ -62,8 +26,9 @@ class ResultScreen extends StatefulWidget {
 
 class _ResultScreenState extends State<ResultScreen>
     with SingleTickerProviderStateMixin {
-  late AnimationController _progressCtrl;
-  late Animation<double> _progressAnim;
+  late final AnimationController _progressCtrl;
+  late final Animation<double> _progressAnim;
+  Map<String, dynamic> _treatments = const {};
 
   @override
   void initState() {
@@ -72,16 +37,14 @@ class _ResultScreenState extends State<ResultScreen>
       vsync: this,
       duration: const Duration(milliseconds: 800),
     );
-    _progressAnim = Tween<double>(begin: 0, end: widget.prediction.confidence)
-        .animate(
-          CurvedAnimation(parent: _progressCtrl, curve: Curves.easeOutCubic),
-        );
+    _progressAnim = Tween<double>(
+      begin: 0,
+      end: widget.prediction.confidence,
+    ).animate(
+      CurvedAnimation(parent: _progressCtrl, curve: Curves.easeOutCubic),
+    );
     _progressCtrl.forward();
-
-    // Auto-read result via TTS
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _readResult();
-    });
+    _loadTreatments();
   }
 
   @override
@@ -89,6 +52,28 @@ class _ResultScreenState extends State<ResultScreen>
     _progressCtrl.dispose();
     TTSService.instance.stop();
     super.dispose();
+  }
+
+  Future<void> _loadTreatments() async {
+    try {
+      final jsonString = await rootBundle.loadString(
+        'assets/data/treatments.json',
+      );
+      final decoded = jsonDecode(jsonString);
+      if (!mounted) return;
+      if (decoded is Map<String, dynamic>) {
+        setState(() => _treatments = decoded);
+      }
+    } catch (_) {
+      // Keep the screen usable with the fallback text already present
+      // in PredictionModel.remedy.
+    } finally {
+      if (mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _readResult();
+        });
+      }
+    }
   }
 
   Future<void> _readResult() async {
@@ -102,9 +87,31 @@ class _ResultScreenState extends State<ResultScreen>
 
   String _getTreatment(String lang) {
     final disease = widget.prediction.disease;
-    return _treatments[disease]?[lang] ??
-        _treatments[disease]?['en'] ??
-        'No treatment information available.';
+    final diseaseEntry = _treatments[disease];
+
+    if (diseaseEntry is Map<String, dynamic>) {
+      final localizedEntry = diseaseEntry[lang];
+      if (localizedEntry is Map<String, dynamic>) {
+        final treatment = localizedEntry['treatment'];
+        if (treatment is String && treatment.isNotEmpty) {
+          return treatment;
+        }
+      }
+
+      final englishEntry = diseaseEntry['en'];
+      if (englishEntry is Map<String, dynamic>) {
+        final treatment = englishEntry['treatment'];
+        if (treatment is String && treatment.isNotEmpty) {
+          return treatment;
+        }
+      }
+    }
+
+    if (widget.prediction.remedy.isNotEmpty) {
+      return widget.prediction.remedy;
+    }
+
+    return 'No treatment information available.';
   }
 
   @override
@@ -122,6 +129,12 @@ class _ResultScreenState extends State<ResultScreen>
         : isHealthy
         ? appColors?.healthy ?? Colors.green
         : appColors?.disease ?? Colors.red;
+
+    final badgeText = pred.isUncertain
+        ? 'Low Confidence'
+        : isHealthy
+        ? pred.displayName
+        : pred.displayName;
 
     return Scaffold(
       appBar: AppBar(
@@ -143,7 +156,6 @@ class _ResultScreenState extends State<ResultScreen>
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            // ── Image ────────────────────────────
             ClipRRect(
               borderRadius: BorderRadius.circular(20),
               child: Image.file(
@@ -153,43 +165,35 @@ class _ResultScreenState extends State<ResultScreen>
                 fit: BoxFit.cover,
               ),
             ),
-
             const SizedBox(height: 20),
-
-            // ── Result Card ──────────────────────
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(20),
                 child: Column(
                   children: [
-                    // Disease name
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 8,
                       ),
                       decoration: BoxDecoration(
-                        color: resultColor.withOpacity(0.15),
+                        color: resultColor.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(30),
-                        border: Border.all(color: resultColor.withOpacity(0.4)),
+                        border: Border.all(
+                          color: resultColor.withValues(alpha: 0.4),
+                        ),
                       ),
                       child: Text(
-                        pred.isUncertain
-                            ? '⚠️  Low Confidence'
-                            : isHealthy
-                            ? '✅  ${pred.displayName}'
-                            : '🚨  ${pred.displayName}',
+                        badgeText,
                         style: TextStyle(
                           color: resultColor,
                           fontWeight: FontWeight.w800,
                           fontSize: 20,
                         ),
+                        textAlign: TextAlign.center,
                       ),
                     ),
-
                     const SizedBox(height: 20),
-
-                    // Confidence meter
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -199,7 +203,7 @@ class _ResultScreenState extends State<ResultScreen>
                         ),
                         AnimatedBuilder(
                           animation: _progressAnim,
-                          builder: (_, __) => Text(
+                          builder: (context, child) => Text(
                             '${(_progressAnim.value * 100).toStringAsFixed(1)}%',
                             style: TextStyle(
                               color: resultColor,
@@ -213,12 +217,12 @@ class _ResultScreenState extends State<ResultScreen>
                     const SizedBox(height: 8),
                     AnimatedBuilder(
                       animation: _progressAnim,
-                      builder: (_, __) => ClipRRect(
+                      builder: (context, child) => ClipRRect(
                         borderRadius: BorderRadius.circular(8),
                         child: LinearProgressIndicator(
                           value: _progressAnim.value,
                           minHeight: 14,
-                          backgroundColor: resultColor.withOpacity(0.15),
+                          backgroundColor: resultColor.withValues(alpha: 0.15),
                           valueColor: AlwaysStoppedAnimation(resultColor),
                         ),
                       ),
@@ -227,10 +231,7 @@ class _ResultScreenState extends State<ResultScreen>
                 ),
               ),
             ),
-
             const SizedBox(height: 8),
-
-            // ── Treatment Card ───────────────────
             if (!pred.isUncertain)
               Card(
                 child: Padding(
@@ -260,10 +261,9 @@ class _ResultScreenState extends State<ResultScreen>
                   ),
                 ),
               ),
-
             if (pred.isUncertain)
               Card(
-                color: Colors.orange.withOpacity(0.1),
+                color: Colors.orange.withValues(alpha: 0.1),
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Text(
@@ -272,10 +272,7 @@ class _ResultScreenState extends State<ResultScreen>
                   ),
                 ),
               ),
-
             const SizedBox(height: 20),
-
-            // ── Actions ──────────────────────────
             ElevatedButton.icon(
               onPressed: () => Navigator.pop(context),
               icon: const Icon(Icons.camera_alt_rounded),

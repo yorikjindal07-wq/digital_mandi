@@ -56,7 +56,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
           if (_reports != null && _reports!.isNotEmpty)
             Chip(
               label: Text('${_reports!.length} reports'),
-              backgroundColor: scheme.primary.withOpacity(0.1),
+              backgroundColor: scheme.primary.withValues(alpha: 0.1),
             ),
           const SizedBox(width: 8),
         ],
@@ -114,7 +114,7 @@ class _ReportCard extends StatelessWidget {
                 ),
               )
             : CircleAvatar(
-                backgroundColor: color.withOpacity(0.15),
+                backgroundColor: color.withValues(alpha: 0.15),
                 child: Icon(Icons.eco, color: color),
               ),
         title: Text(
@@ -135,7 +135,10 @@ class _ReportCard extends StatelessWidget {
             const SizedBox(height: 2),
             Text(
               _formatDate(report.createdAt),
-              style: TextStyle(fontSize: 11, color: scheme.onSurface.withOpacity(0.5)),
+              style: TextStyle(
+                fontSize: 11,
+                color: scheme.onSurface.withValues(alpha: 0.5),
+              ),
             ),
           ],
         ),
