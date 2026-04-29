@@ -13,6 +13,9 @@ ios/Pods/
 # Python
 __pycache__/
 *.pyc
+backend/.env
+backend/*.db
+backend/data/
 
 # ML models (CRITICAL)
 *.pt

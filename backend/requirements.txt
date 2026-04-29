@@ -1,45 +1,23 @@
-# ═══════════════════════════════════════════════════════════════
-# requirements_backend.txt
-# FastAPI Backend Server
-# Location: backend/requirements_backend.txt
-#
-# PYTHON VERSION: 3.10.x or 3.11.x (both work for backend)
-#
-# Install:
-#   pip install -r requirements_backend.txt
-#
-# Run server:
-#   uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-# ═══════════════════════════════════════════════════════════════
+# FastAPI backend
+fastapi==0.111.0
+gunicorn==22.0.0
+uvicorn[standard]==0.30.1
 
-# ── Web framework ─────────────────────────────────────────────
-fastapi==0.111.0               # Main web framework
-uvicorn[standard]==0.30.1      # ASGI server to run FastAPI
-                               # [standard] includes websockets + httptools
+# Validation / request parsing
+pydantic==2.8.2
+python-multipart==0.0.9
 
-# ── Request/response ─────────────────────────────────────────
-pydantic==2.8.2                # Data validation (FastAPI uses this internally)
-python-multipart==0.0.9        # File upload support (for /predict endpoint)
+# Database
+sqlalchemy==2.0.31
+psycopg2-binary==2.9.9
 
-# ── Database ──────────────────────────────────────────────────
-sqlalchemy==2.0.31             # ORM for SQLite database
-# psycopg2-binary==2.9.9       # Uncomment if switching to PostgreSQL
+# HTTP clients / APIs
+httpx==0.27.0
+requests==2.32.3
+anthropic==0.34.0
 
-# ── HTTP client (for calling Claude API + treatment APIs) ─────
-httpx==0.27.0                  # Async HTTP client used by chat.py
-requests==2.32.3               # Sync HTTP client used by treatment_api_service.py
-
-# ── AI / Claude API ───────────────────────────────────────────
-anthropic==0.34.0              # Official Anthropic SDK
-                               # Used as fallback — backend/app/api/chat.py
-                               # also calls the API directly via httpx
-
-# ── Environment variables ─────────────────────────────────────
-python-dotenv==1.0.1           # Loads .env file (ANTHROPIC_API_KEY etc.)
-
-# ── Image processing (for /predict endpoint) ──────────────────
-Pillow==10.4.0                 # PIL — decode uploaded images
-
-# ── Utilities ─────────────────────────────────────────────────
-python-jose[cryptography]==3.3.0  # JWT tokens (if you add auth later)
-passlib[bcrypt]==1.7.4            # Password hashing (if you add auth later)
+# Environment / utilities
+python-dotenv==1.0.1
+Pillow==10.4.0
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4

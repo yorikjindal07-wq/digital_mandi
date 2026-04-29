@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: digital-mandi-backend
+    runtime: python
+    rootDir: backend
+    plan: starter
+    autoDeployTrigger: commit
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn -k uvicorn.workers.UvicornWorker app.main:app --bind 0.0.0.0:$PORT
+    healthCheckPath: /health
+    disk:
+      name: data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: CORS_ALLOW_ORIGINS
+        value: "*"
+      - key: SQLITE_PATH
+        value: /var/data/digital_mandi.db
