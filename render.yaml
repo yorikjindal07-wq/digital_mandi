@@ -11,8 +11,12 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.9
-      - key: ANTHROPIC_API_KEY
+      - key: HUGGING_FACE_API_KEY
         sync: false
+      - key: HUGGING_FACE_MODEL
+        value: katanemo/Arch-Router-1.5B:hf-inference
+      - key: HUGGING_FACE_API_URL
+        value: https://router.huggingface.co/v1/chat/completions
       - key: CORS_ALLOW_ORIGINS
         value: "*"
       - key: SQLITE_PATH

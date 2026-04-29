@@ -19,7 +19,9 @@ gunicorn -k uvicorn.workers.UvicornWorker app.main:app --bind 0.0.0.0:$PORT
 
 ### Environment variables
 
-- `ANTHROPIC_API_KEY`
+- `HUGGING_FACE_API_KEY`
+- `HUGGING_FACE_MODEL`
+- `HUGGING_FACE_API_URL`
 - `CORS_ALLOW_ORIGINS`
 - `DATABASE_URL` if you attach Render Postgres
 - `SQLITE_PATH` if you use SQLite
