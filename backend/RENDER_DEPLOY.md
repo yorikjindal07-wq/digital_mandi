@@ -26,7 +26,10 @@ gunicorn -k uvicorn.workers.UvicornWorker app.main:app --bind 0.0.0.0:$PORT
 
 ### Important
 
-Render free services can sleep when idle. If you need the backend truly live 24/7, use a paid Render instance.
+This project is currently configured for the Render free plan.
+Free services can sleep when idle, and SQLite data stored locally is temporary because free services do not support persistent disks.
+
+If you need the backend truly live 24/7 with persistent local storage, switch to a paid Render instance or attach Render Postgres.
 
 ### Flutter app
 
