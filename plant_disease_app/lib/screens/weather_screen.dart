@@ -112,6 +112,8 @@ class _WeatherScreenState extends State<WeatherScreen> {
   String _selectedState = 'Punjab';
   String _selectedCity = 'Ludhiana';
   String _selectedSeason = 'kharif';
+  Map<String, List<String>> _statesAndCities =
+      IndiaLocations.fallbackStatesAndCities;
   WeatherData? _liveWeather;
   List<WeatherData> _threeDayForecast = const [];
   bool _isLoading = true;
@@ -119,7 +121,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
   late final TextEditingController _cityController;
 
   List<String> get _citySuggestions =>
-      IndiaLocations.statesAndCities[_selectedState] ?? const <String>[];
+      _statesAndCities[_selectedState] ?? const <String>[];
 
   Future<void> _loadWeather() async {
     final liveWeatherCity = _cityController.text.trim().isEmpty
@@ -161,7 +163,27 @@ class _WeatherScreenState extends State<WeatherScreen> {
   void initState() {
     super.initState();
     _cityController = TextEditingController(text: _selectedCity);
+    _loadLocations();
     _loadWeather();
+  }
+
+  Future<void> _loadLocations() async {
+    final locations = await IndiaLocations.loadStatesAndCities();
+    if (!mounted) return;
+
+    setState(() {
+      _statesAndCities = locations;
+
+      if (!_statesAndCities.containsKey(_selectedState)) {
+        _selectedState = _statesAndCities.keys.first;
+      }
+
+      final cities = _statesAndCities[_selectedState] ?? const <String>[];
+      if (!cities.contains(_selectedCity) && cities.isNotEmpty) {
+        _selectedCity = cities.first;
+        _cityController.text = _selectedCity;
+      }
+    });
   }
 
   @override
@@ -173,6 +195,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.watch<AppProvider>().l10n;
+    final lang = context.watch<AppProvider>().languageCode;
     final scheme = Theme.of(context).colorScheme;
     final seasonalData = _weatherData[_selectedState]?[_selectedSeason];
     final irrigationAdvice = _liveWeather == null
@@ -261,7 +284,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
                       ),
                       const SizedBox(height: 10),
                       Text(
-                        seasonalData['advice'] as String,
+                        _weatherText(lang, seasonalData['advice'] as String),
                         style: Theme.of(
                           context,
                         ).textTheme.bodyMedium?.copyWith(height: 1.55),
@@ -297,6 +320,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
     String? diseaseRisk,
   ) {
     final l10n = context.watch<AppProvider>().l10n;
+    final lang = context.watch<AppProvider>().languageCode;
     if (_isLoading) {
       return const Center(
         child: Padding(
@@ -437,14 +461,14 @@ class _WeatherScreenState extends State<WeatherScreen> {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  '${l10n['irrigation']}: $irrigationAdvice',
+                  '${l10n['irrigation']}: ${irrigationAdvice == null ? '' : _weatherText(lang, irrigationAdvice)}',
                   style: Theme.of(
                     context,
                   ).textTheme.bodyMedium?.copyWith(height: 1.45),
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  '${l10n['disease_risk']}: $diseaseRisk',
+                  '${l10n['disease_risk']}: ${diseaseRisk == null ? '' : _weatherText(lang, diseaseRisk)}',
                   style: Theme.of(
                     context,
                   ).textTheme.bodyMedium?.copyWith(height: 1.45),
@@ -467,17 +491,17 @@ class _WeatherScreenState extends State<WeatherScreen> {
             isExpanded: true,
             value: _selectedState,
             hint: Text(l10n['select_state']),
-            items: IndiaLocations.statesAndCities.keys
+            items: _statesAndCities.keys
                 .map(
                   (state) => DropdownMenuItem(value: state, child: Text(state)),
                 )
                 .toList(),
             onChanged: (value) {
               if (value == null) return;
+              final nextCities = _statesAndCities[value] ?? const <String>[];
               setState(() {
                 _selectedState = value;
-                _selectedCity =
-                    IndiaLocations.statesAndCities[value]?.first ?? '';
+                _selectedCity = nextCities.isNotEmpty ? nextCities.first : '';
                 _cityController.text = _selectedCity;
               });
             },
@@ -773,6 +797,7 @@ class _ForecastCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.watch<AppProvider>().l10n;
+    final lang = context.watch<AppProvider>().languageCode;
     final scheme = Theme.of(context).colorScheme;
 
     return Container(
@@ -786,7 +811,7 @@ class _ForecastCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            _formatDay(forecast.timestamp),
+            _formatDay(lang, forecast.timestamp),
             style: const TextStyle(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
@@ -819,9 +844,26 @@ class _ForecastCard extends StatelessWidget {
     );
   }
 
-  String _formatDay(DateTime date) {
-    const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    return labels[date.weekday - 1];
+  String _formatDay(String lang, DateTime date) {
+    const en = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const hi = ['सोम', 'मंगल', 'बुध', 'गुरु', 'शुक्र', 'शनि', 'रवि'];
+    const pa = ['ਸੋਮ', 'ਮੰਗਲ', 'ਬੁੱਧ', 'ਵੀਰ', 'ਸ਼ੁੱਕਰ', 'ਸ਼ਨੀ', 'ਐਤ'];
+    const mr = ['सोम', 'मंगळ', 'बुध', 'गुरु', 'शुक्र', 'शनि', 'रवि'];
+    const te = ['సోమ', 'మంగళ', 'బుధ', 'గురు', 'శుక్ర', 'శని', 'ఆది'];
+
+    if (lang == 'hi') {
+      return hi[date.weekday - 1];
+    }
+    if (lang == 'pa') {
+      return pa[date.weekday - 1];
+    }
+    if (lang == 'mr') {
+      return mr[date.weekday - 1];
+    }
+    if (lang == 'te') {
+      return te[date.weekday - 1];
+    }
+    return en[date.weekday - 1];
   }
 }
 
@@ -848,6 +890,7 @@ class _MonthlyCalendar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.watch<AppProvider>().l10n;
+    final lang = context.watch<AppProvider>().languageCode;
     final scheme = Theme.of(context).colorScheme;
     final now = DateTime.now();
 
@@ -889,7 +932,7 @@ class _MonthlyCalendar extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        _months[i]['m']!,
+                        _weatherMonthLabel(lang, _months[i]['m']!),
                         style: TextStyle(
                           fontWeight: FontWeight.w700,
                           fontSize: 11,
@@ -897,7 +940,7 @@ class _MonthlyCalendar extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        _months[i]['activity']!,
+                        _weatherText(lang, _months[i]['activity']!),
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 9,
@@ -916,4 +959,349 @@ class _MonthlyCalendar extends StatelessWidget {
       ),
     );
   }
+}
+
+String _weatherMonthLabel(String lang, String month) {
+  const hi = {
+    'Jan': 'जन',
+    'Feb': 'फर',
+    'Mar': 'मार्च',
+    'Apr': 'अप्रै',
+    'May': 'मई',
+    'Jun': 'जून',
+    'Jul': 'जुल',
+    'Aug': 'अग',
+    'Sep': 'सित',
+    'Oct': 'अक्टू',
+    'Nov': 'नव',
+    'Dec': 'दिस',
+  };
+  const pa = {
+    'Jan': 'ਜਨ',
+    'Feb': 'ਫ਼ਰ',
+    'Mar': 'ਮਾਰਚ',
+    'Apr': 'ਅਪ੍ਰੈ',
+    'May': 'ਮਈ',
+    'Jun': 'ਜੂਨ',
+    'Jul': 'ਜੁਲ',
+    'Aug': 'ਅਗ',
+    'Sep': 'ਸਤੰ',
+    'Oct': 'ਅਕਤੂ',
+    'Nov': 'ਨਵੰ',
+    'Dec': 'ਦਸੰ',
+  };
+
+  if (lang == 'hi') {
+    return hi[month] ?? month;
+  }
+  if (lang == 'pa') {
+    return pa[month] ?? month;
+  }
+  if (lang == 'mr') {
+    switch (month) {
+      case 'Jan':
+        return 'जाने';
+      case 'Feb':
+        return 'फेब्रु';
+      case 'Mar':
+        return 'मार्च';
+      case 'Apr':
+        return 'एप्रि';
+      case 'May':
+        return 'मे';
+      case 'Jun':
+        return 'जून';
+      case 'Jul':
+        return 'जुलै';
+      case 'Aug':
+        return 'ऑग';
+      case 'Sep':
+        return 'सप्टें';
+      case 'Oct':
+        return 'ऑक्टो';
+      case 'Nov':
+        return 'नोव्हें';
+      case 'Dec':
+        return 'डिसें';
+    }
+  }
+  if (lang == 'te') {
+    switch (month) {
+      case 'Jan':
+        return 'జన';
+      case 'Feb':
+        return 'ఫిబ్ర';
+      case 'Mar':
+        return 'మార్చి';
+      case 'Apr':
+        return 'ఏప్రి';
+      case 'May':
+        return 'మే';
+      case 'Jun':
+        return 'జూన్';
+      case 'Jul':
+        return 'జులై';
+      case 'Aug':
+        return 'ఆగ';
+      case 'Sep':
+        return 'సెప్';
+      case 'Oct':
+        return 'అక్టో';
+      case 'Nov':
+        return 'నవం';
+      case 'Dec':
+        return 'డిసెం';
+    }
+  }
+  return month;
+}
+
+String _weatherText(String lang, String text) {
+  const hi = {
+    'Irrigate wheat before harvest. Watch for aphids in heat.':
+        'कटाई से पहले गेहूं की सिंचाई करें। गर्मी में एफिड पर नजर रखें।',
+    'Good for rice and maize. Monitor for blast disease.':
+        'धान और मक्का के लिए अच्छा समय है। ब्लास्ट रोग पर नजर रखें।',
+    'Ideal for wheat. Frost risk after Dec. Apply irrigation.':
+        'गेहूं के लिए अच्छा समय है। दिसंबर के बाद पाला पड़ सकता है। सिंचाई करें।',
+    'Keep fields mulched. Drip irrigate vegetables.':
+        'खेत में मल्च रखें। सब्जियों में ड्रिप सिंचाई करें।',
+    'Paddy transplanting season. Monitor for BPH.':
+        'धान रोपाई का मौसम है। BPH पर नजर रखें।',
+    'Wheat sowing time. Good mustard season.':
+        'गेहूं बुवाई का समय है। सरसों के लिए अच्छा मौसम है।',
+    'Irrigate sugarcane weekly. Protect cotton seedlings.':
+        'गन्ने की साप्ताहिक सिंचाई करें। कपास की नन्ही पौध की रक्षा करें।',
+    'Soybean and cotton main season. Watch for bollworm.':
+        'सोयाबीन और कपास का मुख्य मौसम है। बॉलवर्म पर नजर रखें।',
+    'Rabi sorghum and chickpea. Good for onion.':
+        'रबी ज्वार और चना के लिए अच्छा समय है। प्याज के लिए भी ठीक है।',
+    'Mango flowering period. Protect from heat stress.':
+        'आम में फूल आने का समय है। गर्मी के तनाव से बचाएं।',
+    'Paddy season. Drain fields for weeding. Sugarcane irrigation.':
+        'धान का मौसम है। निराई के लिए खेत का पानी निकालें। गन्ने की सिंचाई करें।',
+    'Wheat, mustard, pea season. Apply DAP at sowing.':
+        'गेहूं, सरसों और मटर का मौसम है। बुवाई के समय DAP दें।',
+    'Heavy rain expected. Skip irrigation for 2-3 days.':
+        'भारी बारिश की संभावना है। 2-3 दिन सिंचाई रोकें।',
+    'Light rain detected. Reduce irrigation amount.':
+        'हल्की बारिश मिली है। सिंचाई की मात्रा कम करें।',
+    'High humidity. Skip irrigation today.': 'नमी अधिक है। आज सिंचाई न करें।',
+    'Hot and dry conditions. Increase irrigation frequency.':
+        'गर्मी और सूखा है। सिंचाई की आवृत्ति बढ़ाएं।',
+    'Normal conditions. Regular irrigation schedule recommended.':
+        'सामान्य स्थिति है। नियमित सिंचाई कार्यक्रम रखें।',
+    'High risk: favorable conditions for fungal diseases.':
+        'उच्च जोखिम: फफूंदी रोगों के लिए अनुकूल मौसम।',
+    'Low risk: dry conditions reduce disease spread.':
+        'कम जोखिम: सूखी स्थिति रोग फैलाव कम करती है।',
+    'Moderate risk: normal disease pressure.': 'मध्यम जोखिम: सामान्य रोग दबाव।',
+    'Wheat growth': 'गेहूं बढ़वार',
+    'Mustard harvest': 'सरसों कटाई',
+    'Rabi harvest': 'रबी कटाई',
+    'Summer veg': 'गर्मी सब्जियां',
+    'Field prep': 'खेत तैयारी',
+    'Kharif sowing': 'खरीफ बुवाई',
+    'Paddy transplant': 'धान रोपाई',
+    'Weed control': 'खरपतवार नियंत्रण',
+    'Kharif growth': 'खरीफ बढ़वार',
+    'Kharif harvest': 'खरीफ कटाई',
+    'Rabi sowing': 'रबी बुवाई',
+  };
+
+  const pa = {
+    'Irrigate wheat before harvest. Watch for aphids in heat.':
+        'ਕਟਾਈ ਤੋਂ ਪਹਿਲਾਂ ਗੇਂਹੂਂ ਨੂੰ ਪਾਣੀ ਦਿਓ। ਗਰਮੀ ਵਿੱਚ ਐਫਿਡ ਤੇ ਨਜ਼ਰ ਰੱਖੋ।',
+    'Good for rice and maize. Monitor for blast disease.':
+        'ਧਾਨ ਅਤੇ ਮੱਕੀ ਲਈ ਚੰਗਾ ਸਮਾਂ ਹੈ। ਬਲਾਸਟ ਰੋਗ ਤੇ ਨਜ਼ਰ ਰੱਖੋ।',
+    'Ideal for wheat. Frost risk after Dec. Apply irrigation.':
+        'ਗੇਂਹੂਂ ਲਈ ਵਧੀਆ ਸਮਾਂ ਹੈ। ਦਸੰਬਰ ਤੋਂ ਬਾਅਦ ਪਾਲੇ ਦਾ ਖਤਰਾ ਹੈ। ਸਿੰਚਾਈ ਕਰੋ।',
+    'Keep fields mulched. Drip irrigate vegetables.':
+        'ਖੇਤ ਵਿੱਚ ਮਲਚ ਰੱਖੋ। ਸਬਜ਼ੀਆਂ ਲਈ ਡ੍ਰਿਪ ਸਿੰਚਾਈ ਕਰੋ।',
+    'Paddy transplanting season. Monitor for BPH.':
+        'ਧਾਨ ਰੋਪਾਈ ਦਾ ਮੌਸਮ ਹੈ। BPH ਤੇ ਨਜ਼ਰ ਰੱਖੋ।',
+    'Wheat sowing time. Good mustard season.':
+        'ਗੇਂਹੂਂ ਬਿਜਾਈ ਦਾ ਸਮਾਂ ਹੈ। ਸਰੋਂ ਲਈ ਚੰਗਾ ਮੌਸਮ ਹੈ।',
+    'Irrigate sugarcane weekly. Protect cotton seedlings.':
+        'ਗੰਨੇ ਨੂੰ ਹਫ਼ਤੇਵਾਰ ਪਾਣੀ ਦਿਓ। ਕਪਾਹ ਦੇ ਪੌਦਿਆਂ ਦੀ ਰੱਖਿਆ ਕਰੋ।',
+    'Soybean and cotton main season. Watch for bollworm.':
+        'ਸੋਯਾਬੀਨ ਅਤੇ ਕਪਾਹ ਦਾ ਮੁੱਖ ਮੌਸਮ ਹੈ। ਬੋਲਵਰਮ ਤੇ ਨਜ਼ਰ ਰੱਖੋ।',
+    'Rabi sorghum and chickpea. Good for onion.':
+        'ਰਬੀ ਜਵਾਰ ਅਤੇ ਚਣੇ ਲਈ ਵਧੀਆ ਸਮਾਂ ਹੈ। ਪਿਆਜ਼ ਲਈ ਵੀ ਠੀਕ ਹੈ।',
+    'Mango flowering period. Protect from heat stress.':
+        'ਅੰਬ ਵਿੱਚ ਫੁੱਲ ਆਉਣ ਦਾ ਸਮਾਂ ਹੈ। ਗਰਮੀ ਦੇ ਤਣਾਅ ਤੋਂ ਬਚਾਓ।',
+    'Paddy season. Drain fields for weeding. Sugarcane irrigation.':
+        'ਧਾਨ ਦਾ ਮੌਸਮ ਹੈ। ਨਿਰਾਈ ਲਈ ਖੇਤ ਦਾ ਪਾਣੀ ਕੱਢੋ। ਗੰਨੇ ਨੂੰ ਪਾਣੀ ਦਿਓ।',
+    'Wheat, mustard, pea season. Apply DAP at sowing.':
+        'ਗੇਂਹੂਂ, ਸਰੋਂ ਅਤੇ ਮਟਰ ਦਾ ਮੌਸਮ ਹੈ। ਬਿਜਾਈ ਵੇਲੇ DAP ਦਿਓ।',
+    'Heavy rain expected. Skip irrigation for 2-3 days.':
+        'ਭਾਰੀ ਮੀਂਹ ਦੀ ਸੰਭਾਵਨਾ ਹੈ। 2-3 ਦਿਨ ਸਿੰਚਾਈ ਨਾ ਕਰੋ।',
+    'Light rain detected. Reduce irrigation amount.':
+        'ਹਲਕਾ ਮੀਂਹ ਹੈ। ਸਿੰਚਾਈ ਦੀ ਮਾਤਰਾ ਘਟਾਓ।',
+    'High humidity. Skip irrigation today.': 'ਨਮੀ ਵੱਧ ਹੈ। ਅੱਜ ਸਿੰਚਾਈ ਨਾ ਕਰੋ।',
+    'Hot and dry conditions. Increase irrigation frequency.':
+        'ਗਰਮੀ ਅਤੇ ਸੁੱਕਾ ਹੈ। ਸਿੰਚਾਈ ਦੀ ਵਾਰੰਵਾਰਤਾ ਵਧਾਓ।',
+    'Normal conditions. Regular irrigation schedule recommended.':
+        'ਹਾਲਤ ਆਮ ਹੈ। ਨਿਯਮਿਤ ਸਿੰਚਾਈ ਰੱਖੋ।',
+    'High risk: favorable conditions for fungal diseases.':
+        'ਉੱਚ ਖਤਰਾ: ਫੰਗਸ ਰੋਗਾਂ ਲਈ ਅਨੁਕੂਲ ਹਾਲਤ।',
+    'Low risk: dry conditions reduce disease spread.':
+        'ਘੱਟ ਖਤਰਾ: ਸੁੱਕੀ ਹਾਲਤ ਰੋਗ ਫੈਲਾਅ ਘਟਾਉਂਦੀ ਹੈ।',
+    'Moderate risk: normal disease pressure.': 'ਦਰਮਿਆਨਾ ਖਤਰਾ: ਆਮ ਰੋਗ ਦਬਾਅ।',
+    'Wheat growth': 'ਗੇਂਹੂਂ ਵਾਧਾ',
+    'Mustard harvest': 'ਸਰੋਂ ਕਟਾਈ',
+    'Rabi harvest': 'ਰਬੀ ਕਟਾਈ',
+    'Summer veg': 'ਗਰਮੀ ਸਬਜ਼ੀਆਂ',
+    'Field prep': 'ਖੇਤ ਤਿਆਰੀ',
+    'Kharif sowing': 'ਖਰੀਫ ਬਿਜਾਈ',
+    'Paddy transplant': 'ਧਾਨ ਰੋਪਾਈ',
+    'Weed control': 'ਖਰਪਤਵਾਰ ਕੰਟਰੋਲ',
+    'Kharif growth': 'ਖਰੀਫ ਵਾਧਾ',
+    'Kharif harvest': 'ਖਰੀਫ ਕਟਾਈ',
+    'Rabi sowing': 'ਰਬੀ ਬਿਜਾਈ',
+  };
+
+  if (lang == 'hi') {
+    return hi[text] ?? text;
+  }
+  if (lang == 'pa') {
+    return pa[text] ?? text;
+  }
+  if (lang == 'mr') {
+    switch (text) {
+      case 'Irrigate wheat before harvest. Watch for aphids in heat.':
+        return 'कापणीपूर्वी गव्हाला पाणी द्या. उष्णतेत मावा कीडीकडे लक्ष ठेवा.';
+      case 'Good for rice and maize. Monitor for blast disease.':
+        return 'तांदूळ आणि मका यासाठी चांगला काळ आहे. ब्लास्ट रोगावर लक्ष ठेवा.';
+      case 'Ideal for wheat. Frost risk after Dec. Apply irrigation.':
+        return 'गव्हासाठी उत्तम काळ आहे. डिसेंबरनंतर दवाचा धोका असतो. सिंचन करा.';
+      case 'Keep fields mulched. Drip irrigate vegetables.':
+        return 'शेतात मल्च ठेवा. भाज्यांना ठिबक सिंचन द्या.';
+      case 'Paddy transplanting season. Monitor for BPH.':
+        return 'धान रोपांची लागवड सुरू आहे. BPH वर लक्ष ठेवा.';
+      case 'Wheat sowing time. Good mustard season.':
+        return 'गहू पेरणीचा काळ आहे. मोहरीसाठी चांगला हंगाम आहे.';
+      case 'Irrigate sugarcane weekly. Protect cotton seedlings.':
+        return 'ऊसाला आठवड्याला पाणी द्या. कापसाच्या रोपांचे संरक्षण करा.';
+      case 'Soybean and cotton main season. Watch for bollworm.':
+        return 'सोयाबीन आणि कापसाचा मुख्य हंगाम आहे. बोंडअळीवर लक्ष ठेवा.';
+      case 'Rabi sorghum and chickpea. Good for onion.':
+        return 'रब्बी ज्वारी आणि हरभऱ्यासाठी चांगला काळ आहे. कांद्यासाठीही योग्य आहे.';
+      case 'Mango flowering period. Protect from heat stress.':
+        return 'आंब्याच्या फुलोऱ्याचा काळ आहे. उष्णतेच्या ताणापासून संरक्षण करा.';
+      case 'Paddy season. Drain fields for weeding. Sugarcane irrigation.':
+        return 'धानाचा हंगाम आहे. निंदणीसाठी शेतातील पाणी काढा. ऊसाला पाणी द्या.';
+      case 'Wheat, mustard, pea season. Apply DAP at sowing.':
+        return 'गहू, मोहरी आणि वाटाण्याचा हंगाम आहे. पेरणीवेळी DAP द्या.';
+      case 'Heavy rain expected. Skip irrigation for 2-3 days.':
+        return 'मुसळधार पावसाची शक्यता आहे. 2-3 दिवस सिंचन टाळा.';
+      case 'Light rain detected. Reduce irrigation amount.':
+        return 'हलका पाऊस झाला आहे. सिंचनाचे प्रमाण कमी करा.';
+      case 'High humidity. Skip irrigation today.':
+        return 'आर्द्रता जास्त आहे. आज सिंचन टाळा.';
+      case 'Hot and dry conditions. Increase irrigation frequency.':
+        return 'उष्ण आणि कोरडी हवा आहे. सिंचनाची वारंवारता वाढवा.';
+      case 'Normal conditions. Regular irrigation schedule recommended.':
+        return 'परिस्थिती सामान्य आहे. नियमित सिंचनाचे वेळापत्रक ठेवा.';
+      case 'High risk: favorable conditions for fungal diseases.':
+        return 'उच्च धोका: बुरशीजन्य रोगांसाठी अनुकूल स्थिती.';
+      case 'Low risk: dry conditions reduce disease spread.':
+        return 'कमी धोका: कोरडी स्थिती रोगांचा प्रसार कमी करते.';
+      case 'Moderate risk: normal disease pressure.':
+        return 'मध्यम धोका: सामान्य रोगदाब.';
+      case 'Wheat growth':
+        return 'गहू वाढ';
+      case 'Mustard harvest':
+        return 'मोहरी कापणी';
+      case 'Rabi harvest':
+        return 'रब्बी कापणी';
+      case 'Summer veg':
+        return 'उन्हाळी भाजीपाला';
+      case 'Field prep':
+        return 'शेत तयारी';
+      case 'Kharif sowing':
+        return 'खरीप पेरणी';
+      case 'Paddy transplant':
+        return 'धान रोपलागवड';
+      case 'Weed control':
+        return 'तण नियंत्रण';
+      case 'Kharif growth':
+        return 'खरीप वाढ';
+      case 'Kharif harvest':
+        return 'खरीप कापणी';
+      case 'Rabi sowing':
+        return 'रब्बी पेरणी';
+      default:
+        return text;
+    }
+  }
+  if (lang == 'te') {
+    switch (text) {
+      case 'Irrigate wheat before harvest. Watch for aphids in heat.':
+        return 'కోతకు ముందు గోధుమకు నీరు ఇవ్వండి. వేడిలో మావు పురుగులను గమనించండి.';
+      case 'Good for rice and maize. Monitor for blast disease.':
+        return 'వరి మరియు మక్కకు ఇది మంచి సమయం. బ్లాస్ట్ వ్యాధిని గమనించండి.';
+      case 'Ideal for wheat. Frost risk after Dec. Apply irrigation.':
+        return 'గోధుమకు ఇది మంచి కాలం. డిసెంబర్ తర్వాత మంచు ప్రమాదం ఉంది. నీరు ఇవ్వండి.';
+      case 'Keep fields mulched. Drip irrigate vegetables.':
+        return 'పొలంలో మల్చ్ ఉంచండి. కూరగాయలకు డ్రిప్ నీటిపారుదల చేయండి.';
+      case 'Paddy transplanting season. Monitor for BPH.':
+        return 'వరి నాట్లు వేయే కాలం. BPH ను గమనించండి.';
+      case 'Wheat sowing time. Good mustard season.':
+        return 'గోధుమ విత్తే సమయం. ఆవాల కోసం కూడా మంచిది.';
+      case 'Irrigate sugarcane weekly. Protect cotton seedlings.':
+        return 'చెరకు కి వారానికి ఒకసారి నీరు ఇవ్వండి. పత్తి మొక్కలను రక్షించండి.';
+      case 'Soybean and cotton main season. Watch for bollworm.':
+        return 'సోయాబీన్ మరియు పత్తి ప్రధాన కాలం. బోల్‌వార్మ్ ను గమనించండి.';
+      case 'Rabi sorghum and chickpea. Good for onion.':
+        return 'రబీ జొన్న మరియు సెనగకు మంచి కాలం. ఉల్లికి కూడా అనుకూలం.';
+      case 'Mango flowering period. Protect from heat stress.':
+        return 'మామిడి పుష్పించే కాలం. వేడి ఒత్తిడి నుండి రక్షించండి.';
+      case 'Paddy season. Drain fields for weeding. Sugarcane irrigation.':
+        return 'వరి కాలం. కలుపు తీయడానికి పొలంలో నీరు బయటకు పంపండి. చెరకు కి నీరు ఇవ్వండి.';
+      case 'Wheat, mustard, pea season. Apply DAP at sowing.':
+        return 'గోధుమ, ఆవాలు, బఠాణీ కాలం. విత్తే సమయంలో DAP వేయండి.';
+      case 'Heavy rain expected. Skip irrigation for 2-3 days.':
+        return 'భారీ వర్షం వచ్చే అవకాశం ఉంది. 2-3 రోజులు నీటిపారుదల ఆపండి.';
+      case 'Light rain detected. Reduce irrigation amount.':
+        return 'తేలికపాటి వర్షం పడింది. నీటిపారుదల మొత్తాన్ని తగ్గించండి.';
+      case 'High humidity. Skip irrigation today.':
+        return 'ఆర్ద్రత ఎక్కువగా ఉంది. ఈ రోజు నీటిపారుదల అవసరం లేదు.';
+      case 'Hot and dry conditions. Increase irrigation frequency.':
+        return 'వేడిగా మరియు ఎండగా ఉంది. నీటిపారుదల తరచుదనాన్ని పెంచండి.';
+      case 'Normal conditions. Regular irrigation schedule recommended.':
+        return 'పరిస్థితులు సాధారణంగా ఉన్నాయి. క్రమమైన నీటిపారుదల షెడ్యూల్ పాటించండి.';
+      case 'High risk: favorable conditions for fungal diseases.':
+        return 'అధిక ప్రమాదం: శిలీంధ్ర వ్యాధులకు అనుకూల పరిస్థితులు.';
+      case 'Low risk: dry conditions reduce disease spread.':
+        return 'తక్కువ ప్రమాదం: ఎండ పరిస్థితులు వ్యాధి వ్యాప్తిని తగ్గిస్తాయి.';
+      case 'Moderate risk: normal disease pressure.':
+        return 'మోస్తరు ప్రమాదం: సాధారణ వ్యాధి ఒత్తిడి.';
+      case 'Wheat growth':
+        return 'గోధుమ పెరుగుదల';
+      case 'Mustard harvest':
+        return 'ఆవాల కోత';
+      case 'Rabi harvest':
+        return 'రబీ కోత';
+      case 'Summer veg':
+        return 'వేసవి కూరగాయలు';
+      case 'Field prep':
+        return 'పొలం సిద్ధం';
+      case 'Kharif sowing':
+        return 'ఖరీఫ్ విత్తడం';
+      case 'Paddy transplant':
+        return 'వరి నాటు';
+      case 'Weed control':
+        return 'కలుపు నియంత్రణ';
+      case 'Kharif growth':
+        return 'ఖరీఫ్ పెరుగుదల';
+      case 'Kharif harvest':
+        return 'ఖరీఫ్ కోత';
+      case 'Rabi sowing':
+        return 'రబీ విత్తడం';
+      default:
+        return text;
+    }
+  }
+  return text;
 }

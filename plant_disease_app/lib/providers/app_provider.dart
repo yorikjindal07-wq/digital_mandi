@@ -149,7 +149,7 @@ class AppProvider extends ChangeNotifier {
   static AppL10n _getDefaultL10n(String langCode) {
     const translations = {
       'en': {
-        'app_name': 'Digital Mandi',
+        'app_name': 'bharatiya AI kisan',
         'home_title': 'Welcome Farmer',
         'home_subtitle':
             'Everything you need for crop health, weather, and farming support in one place.',
@@ -236,7 +236,7 @@ class AppProvider extends ChangeNotifier {
         'back': 'Back',
       },
       'hi': {
-        'app_name': 'Digital Mandi',
+        'app_name': 'bharatiya AI kisan',
         'home_title': 'स्वागत है किसान',
         'home_subtitle':
             'फसल स्वास्थ्य, मौसम और खेती सहायता के लिए जो चाहिए, वह सब एक ही जगह पर।',
@@ -323,7 +323,7 @@ class AppProvider extends ChangeNotifier {
         'back': 'वापस',
       },
       'pa': {
-        'app_name': 'Digital Mandi',
+        'app_name': 'bharatiya AI kisan',
         'home_title': 'ਕਿਸਾਨ ਜੀ ਆਇਆਂ ਨੂੰ',
         'home_subtitle':
             'ਫਸਲ ਸਿਹਤ, ਮੌਸਮ ਅਤੇ ਖੇਤੀ ਸਹਾਇਤਾ ਲਈ ਲੋੜੀਂਦੀ ਹਰ ਚੀਜ਼ ਇੱਕ ਥਾਂ ਉੱਤੇ।',
@@ -409,7 +409,7 @@ class AppProvider extends ChangeNotifier {
         'back': 'ਵਾਪਸ',
       },
       'mr': {
-        'app_name': 'डिजिटल मंडी',
+        'app_name': 'bharatiya AI kisan',
         'home_title': 'स्वागत शेतकरी',
         'home_subtitle':
             'पीक आरोग्य, हवामान आणि शेती सहाय्यासाठी लागणारी सर्व माहिती एका ठिकाणी.',
@@ -496,7 +496,7 @@ class AppProvider extends ChangeNotifier {
         'back': 'मागे',
       },
       'te': {
-        'app_name': 'డిజిటల్ మండి',
+        'app_name': 'bharatiya AI kisan',
         'home_title': 'స్వాగతం రైతు',
         'home_subtitle':
             'పంట ఆరోగ్యం, వాతావరణం మరియు వ్యవసాయ సహాయం కోసం కావాల్సినది అంతా ఒకే చోట.',
@@ -587,10 +587,204 @@ class AppProvider extends ChangeNotifier {
         'delete': 'తొలగించండి',
         'back': 'వెనక్కి',
       },
+      'mr_extra_unused': {
+        'crop_label': 'पीक',
+        'tap_select_gallery': 'गॅलरीमधून निवडण्यासाठी टॅप करा',
+        'analyze_now': 'आता विश्लेषण करा',
+        'tips_title': 'चांगल्या निकालासाठी सूचना',
+        'tips_1': 'चांगल्या नैसर्गिक प्रकाशात फोटो घ्या',
+        'tips_2': 'रोगग्रस्त पानावर लक्ष केंद्रित करा आणि फ्रेम भरा',
+        'tips_3': 'कॅमेरा पानापासून 15-20 सेमी दूर ठेवा',
+        'tips_4': 'फोटो घेण्यापूर्वी पाण्याचे थेंब पुसा',
+        'ai_model_wait': 'AI मॉडेल लोड होत आहे... कृपया थोडी प्रतीक्षा करा',
+        'analysis_failed_retry':
+            'विश्लेषण पूर्ण झाले नाही. कृपया पुन्हा प्रयत्न करा.',
+        'chat_empty_state': 'शेतीबद्दल काहीही विचारा!',
+        'chat_error_retry': 'माफ करा, मला ते समजले नाही. कृपया पुन्हा विचारा.',
+        'quick_prompt_crop': 'वालुकामय जमिनीसाठी पीक',
+        'quick_prompt_tomato': 'टोमॅटो रोग',
+        'quick_prompt_fertilizer': 'सर्वोत्तम खत',
+        'quick_prompt_water': 'पाणी देण्याचे वेळापत्रक',
+        'quick_prompt_wheat': 'गव्हातील ब्लाइट',
+        'reports_suffix': 'अहवाल',
+        'delete_report_title': 'अहवाल हटवा',
+        'delete_report_message': 'हा अहवाल आपल्या इतिहासातून हटवायचा आहे का?',
+        'no_reports_title': 'अजून अहवाल नाहीत',
+        'no_reports_subtitle': 'पहिला अहवाल तयार करण्यासाठी पान स्कॅन करा',
+        'crop_short_label': 'पीक',
+        'confidence_suffix': 'विश्वास',
+        'no_treatment_available': 'उपचाराची माहिती उपलब्ध नाही.',
+        'low_confidence_badge': 'कमी विश्वास',
+        'scan_another_leaf': 'आणखी एक पान स्कॅन करा',
+        'hear_result_again': 'निकाल पुन्हा ऐका',
+        'crop_name_tomato': 'टोमॅटो',
+        'crop_name_potato': 'बटाटा',
+        'crop_name_wheat': 'गहू',
+        'crop_name_rice': 'तांदूळ',
+        'crop_name_cotton': 'कापूस',
+      },
+      'te_extra_unused': {
+        'crop_label': 'పంట',
+        'tap_select_gallery': 'గ్యాలరీ నుంచి ఎంచుకోవడానికి ట్యాప్ చేయండి',
+        'analyze_now': 'ఇప్పుడు విశ్లేషించండి',
+        'tips_title': 'మంచి ఫలితాల కోసం సూచనలు',
+        'tips_1': 'మంచి సహజ కాంతిలో ఫోటో తీయండి',
+        'tips_2': 'రోగగ్రస్త ఆకు మీద దృష్టి పెట్టి ఫ్రేమ్ నింపండి',
+        'tips_3': 'కెమెరాను ఆకు నుండి 15-20 సెం.మీ. దూరంలో ఉంచండి',
+        'tips_4': 'ఫోటో తీయడానికి ముందు నీటి చుక్కలు తుడవండి',
+        'ai_model_wait': 'AI మోడల్ లోడ్ అవుతోంది... దయచేసి వేచి ఉండండి',
+        'analysis_failed_retry':
+            'విశ్లేషణ పూర్తికాలేదు. దయచేసి మళ్లీ ప్రయత్నించండి.',
+        'chat_empty_state': 'వ్యవసాయం గురించి ఏదైనా అడగండి!',
+        'chat_error_retry':
+            'క్షమించండి, నేను దాన్ని అర్థం చేసుకోలేకపోయాను. దయచేసి మళ్లీ అడగండి.',
+        'quick_prompt_crop': 'ఇసుక నేలకు పంట',
+        'quick_prompt_tomato': 'టమాటా వ్యాధి',
+        'quick_prompt_fertilizer': 'ఉత్తమ ఎరువు',
+        'quick_prompt_water': 'నీటి షెడ్యూల్',
+        'quick_prompt_wheat': 'గోధుమ బ్లైట్',
+        'reports_suffix': 'నివేదికలు',
+        'delete_report_title': 'నివేదిక తొలగించండి',
+        'delete_report_message':
+            'ఈ నివేదికను మీ చరిత్ర నుంచి తొలగించాలనుకుంటున్నారా?',
+        'no_reports_title': 'ఇంకా నివేదికలు లేవు',
+        'no_reports_subtitle': 'మీ మొదటి నివేదిక కోసం ఒక ఆకు స్కాన్ చేయండి',
+        'crop_short_label': 'పంట',
+        'confidence_suffix': 'నమ్మకం',
+        'no_treatment_available': 'చికిత్స సమాచారం అందుబాటులో లేదు.',
+        'low_confidence_badge': 'తక్కువ నమ్మకం',
+        'scan_another_leaf': 'మరొక ఆకు స్కాన్ చేయండి',
+        'hear_result_again': 'ఫలితాన్ని మళ్లీ వినండి',
+        'crop_name_tomato': 'టమాటా',
+        'crop_name_potato': 'బంగాళాదుంప',
+        'crop_name_wheat': 'గోధుమ',
+        'crop_name_rice': 'వరి',
+        'crop_name_cotton': 'పత్తి',
+      },
     };
 
-    return AppL10n(
-      (translations[langCode] ?? translations['en'])!.cast<String, String>(),
-    );
+    const extraTranslations = {
+      'en': {
+        'crop_label': 'Crop',
+        'tap_select_gallery': 'Tap to select from gallery',
+        'analyze_now': 'Analyze Now',
+        'tips_title': 'Tips for better results',
+        'tips_1': 'Take photo in bright natural light',
+        'tips_2': 'Focus on the diseased leaf and fill the frame',
+        'tips_3': 'Keep camera 15-20 cm from the leaf',
+        'tips_4': 'Wipe water drops before capturing',
+        'ai_model_wait': 'AI model loading... please wait',
+        'analysis_failed_retry': 'Analysis failed. Please try again.',
+        'chat_empty_state': 'Ask me anything about farming!',
+        'chat_error_retry':
+            'Sorry, I could not process that. Please try again.',
+        'quick_prompt_crop': 'Crop for sandy soil',
+        'quick_prompt_tomato': 'Tomato disease',
+        'quick_prompt_fertilizer': 'Best fertilizer',
+        'quick_prompt_water': 'Water schedule',
+        'quick_prompt_wheat': 'Wheat blight',
+        'reports_suffix': 'reports',
+        'delete_report_title': 'Delete Report',
+        'delete_report_message': 'Remove this report from your history?',
+        'no_reports_title': 'No reports yet',
+        'no_reports_subtitle': 'Scan a plant leaf to create your first report',
+        'crop_short_label': 'Crop',
+        'confidence_suffix': 'confidence',
+        'no_treatment_available': 'No treatment information available.',
+        'low_confidence_badge': 'Low Confidence',
+        'scan_another_leaf': 'Scan Another Leaf',
+        'hear_result_again': 'Hear Result Again',
+        'crop_name_tomato': 'Tomato',
+        'crop_name_potato': 'Potato',
+        'crop_name_wheat': 'Wheat',
+        'crop_name_rice': 'Rice',
+        'crop_name_cotton': 'Cotton',
+      },
+      'hi': {
+        'crop_label': 'फसल',
+        'tap_select_gallery': 'गैलरी से चुनने के लिए टैप करें',
+        'analyze_now': 'अभी जांच करें',
+        'tips_title': 'बेहतर परिणाम के लिए सुझाव',
+        'tips_1': 'अच्छी प्राकृतिक रोशनी में फोटो लें',
+        'tips_2': 'बीमार पत्ती पर फोकस करें और पूरा फ्रेम भरें',
+        'tips_3': 'कैमरा पत्ती से 15-20 सेमी दूर रखें',
+        'tips_4': 'फोटो लेने से पहले पानी की बूंदें पोंछ लें',
+        'ai_model_wait': 'एआई मॉडल लोड हो रहा है... कृपया प्रतीक्षा करें',
+        'analysis_failed_retry':
+            'जांच पूरी नहीं हो सकी। कृपया फिर से प्रयास करें।',
+        'chat_empty_state': 'खेती के बारे में कुछ भी पूछिए!',
+        'chat_error_retry':
+            'क्षमा करें, मैं यह समझ नहीं सका। कृपया फिर से पूछें।',
+        'quick_prompt_crop': 'रेतीली मिट्टी के लिए फसल',
+        'quick_prompt_tomato': 'टमाटर का रोग',
+        'quick_prompt_fertilizer': 'सबसे अच्छी खाद',
+        'quick_prompt_water': 'सिंचाई समय',
+        'quick_prompt_wheat': 'गेहूं में ब्लाइट',
+        'reports_suffix': 'रिपोर्ट',
+        'delete_report_title': 'रिपोर्ट हटाएं',
+        'delete_report_message':
+            'क्या आप यह रिपोर्ट इतिहास से हटाना चाहते हैं?',
+        'no_reports_title': 'अभी कोई रिपोर्ट नहीं है',
+        'no_reports_subtitle': 'पहली रिपोर्ट बनाने के लिए पत्ती स्कैन करें',
+        'crop_short_label': 'फसल',
+        'confidence_suffix': 'विश्वास',
+        'no_treatment_available': 'उपचार की जानकारी उपलब्ध नहीं है।',
+        'low_confidence_badge': 'कम विश्वास',
+        'scan_another_leaf': 'दूसरी पत्ती स्कैन करें',
+        'hear_result_again': 'परिणाम फिर सुनें',
+        'crop_name_tomato': 'टमाटर',
+        'crop_name_potato': 'आलू',
+        'crop_name_wheat': 'गेहूं',
+        'crop_name_rice': 'धान',
+        'crop_name_cotton': 'कपास',
+      },
+      'pa': {
+        'crop_label': 'ਫਸਲ',
+        'tap_select_gallery': 'ਗੈਲਰੀ ਤੋਂ ਚੁਣਨ ਲਈ ਟੈਪ ਕਰੋ',
+        'analyze_now': 'ਹੁਣੇ ਜਾਂਚੋ',
+        'tips_title': 'ਚੰਗੇ ਨਤੀਜੇ ਲਈ ਸੁਝਾਅ',
+        'tips_1': 'ਚੰਗੀ ਕੁਦਰਤੀ ਰੌਸ਼ਨੀ ਵਿੱਚ ਫੋਟੋ ਲਵੋ',
+        'tips_2': 'ਬਿਮਾਰ ਪੱਤੇ ਤੇ ਫੋਕਸ ਕਰੋ ਅਤੇ ਪੂਰਾ ਫਰੇਮ ਭਰੋ',
+        'tips_3': 'ਕੈਮਰਾ ਪੱਤੇ ਤੋਂ 15-20 ਸੈਮੀ ਦੂਰ ਰੱਖੋ',
+        'tips_4': 'ਫੋਟੋ ਤੋਂ ਪਹਿਲਾਂ ਪਾਣੀ ਦੀਆਂ ਬੂੰਦਾਂ ਪੂੰਝ ਲਵੋ',
+        'ai_model_wait': 'ਏਆਈ ਮਾਡਲ ਲੋਡ ਹੋ ਰਿਹਾ ਹੈ... ਕਿਰਪਾ ਕਰਕੇ ਉਡੀਕ ਕਰੋ',
+        'analysis_failed_retry':
+            'ਜਾਂਚ ਨਹੀਂ ਹੋ ਸਕੀ। ਕਿਰਪਾ ਕਰਕੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।',
+        'chat_empty_state': 'ਖੇਤੀ ਬਾਰੇ ਕੁਝ ਵੀ ਪੁੱਛੋ!',
+        'chat_error_retry':
+            'ਮਾਫ ਕਰਨਾ, ਮੈਂ ਇਹ ਸਮਝ ਨਹੀਂ ਸਕਿਆ। ਕਿਰਪਾ ਕਰਕੇ ਫਿਰ ਪੁੱਛੋ।',
+        'quick_prompt_crop': 'ਰੇਤਲੀ ਮਿੱਟੀ ਲਈ ਫਸਲ',
+        'quick_prompt_tomato': 'ਟਮਾਟਰ ਦਾ ਰੋਗ',
+        'quick_prompt_fertilizer': 'ਸਭ ਤੋਂ ਵਧੀਆ ਖਾਦ',
+        'quick_prompt_water': 'ਸਿੰਚਾਈ ਸਮਾਂ',
+        'quick_prompt_wheat': 'ਗੇਂਹੂਂ ਵਿੱਚ ਬਲਾਈਟ',
+        'reports_suffix': 'ਰਿਪੋਰਟਾਂ',
+        'delete_report_title': 'ਰਿਪੋਰਟ ਮਿਟਾਓ',
+        'delete_report_message':
+            'ਕੀ ਤੁਸੀਂ ਇਹ ਰਿਪੋਰਟ ਆਪਣੀ ਹਿਸਟਰੀ ਤੋਂ ਹਟਾਉਣਾ ਚਾਹੁੰਦੇ ਹੋ?',
+        'no_reports_title': 'ਅਜੇ ਕੋਈ ਰਿਪੋਰਟ ਨਹੀਂ',
+        'no_reports_subtitle': 'ਪਹਿਲੀ ਰਿਪੋਰਟ ਬਣਾਉਣ ਲਈ ਪੱਤਾ ਸਕੈਨ ਕਰੋ',
+        'crop_short_label': 'ਫਸਲ',
+        'confidence_suffix': 'ਭਰੋਸਾ',
+        'no_treatment_available': 'ਇਲਾਜ ਦੀ ਜਾਣਕਾਰੀ ਉਪਲਬਧ ਨਹੀਂ ਹੈ।',
+        'low_confidence_badge': 'ਘੱਟ ਭਰੋਸਾ',
+        'scan_another_leaf': 'ਹੋਰ ਪੱਤਾ ਸਕੈਨ ਕਰੋ',
+        'hear_result_again': 'ਨਤੀਜਾ ਫਿਰ ਸੁਣੋ',
+        'crop_name_tomato': 'ਟਮਾਟਰ',
+        'crop_name_potato': 'ਆਲੂ',
+        'crop_name_wheat': 'ਗੇਂਹੂਂ',
+        'crop_name_rice': 'ਧਾਨ',
+        'crop_name_cotton': 'ਕਪਾਹ',
+      },
+    };
+    final base = (translations[langCode] ?? translations['en'])!
+        .cast<String, String>();
+    final extraSource =
+        extraTranslations[langCode] ??
+        translations['${langCode}_extra_unused'] ??
+        extraTranslations['en'];
+    final extras = extraSource!.cast<String, String>();
+
+    return AppL10n({...base, ...extras});
   }
 }

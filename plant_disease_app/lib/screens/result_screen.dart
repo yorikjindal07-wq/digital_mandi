@@ -37,12 +37,10 @@ class _ResultScreenState extends State<ResultScreen>
       vsync: this,
       duration: const Duration(milliseconds: 800),
     );
-    _progressAnim = Tween<double>(
-      begin: 0,
-      end: widget.prediction.confidence,
-    ).animate(
-      CurvedAnimation(parent: _progressCtrl, curve: Curves.easeOutCubic),
-    );
+    _progressAnim = Tween<double>(begin: 0, end: widget.prediction.confidence)
+        .animate(
+          CurvedAnimation(parent: _progressCtrl, curve: Curves.easeOutCubic),
+        );
     _progressCtrl.forward();
     _loadTreatments();
   }
@@ -111,7 +109,8 @@ class _ResultScreenState extends State<ResultScreen>
       return widget.prediction.remedy;
     }
 
-    return 'No treatment information available.';
+    final l10n = context.read<AppProvider>().l10n;
+    return l10n['no_treatment_available'];
   }
 
   @override
@@ -131,7 +130,7 @@ class _ResultScreenState extends State<ResultScreen>
         : appColors?.disease ?? Colors.red;
 
     final badgeText = pred.isUncertain
-        ? 'Low Confidence'
+        ? l10n['low_confidence_badge']
         : isHealthy
         ? pred.displayName
         : pred.displayName;
@@ -276,13 +275,13 @@ class _ResultScreenState extends State<ResultScreen>
             ElevatedButton.icon(
               onPressed: () => Navigator.pop(context),
               icon: const Icon(Icons.camera_alt_rounded),
-              label: const Text('Scan Another Leaf'),
+              label: Text(l10n['scan_another_leaf']),
             ),
             const SizedBox(height: 10),
             OutlinedButton.icon(
               onPressed: _readResult,
               icon: const Icon(Icons.volume_up_rounded),
-              label: const Text('Hear Result Again'),
+              label: Text(l10n['hear_result_again']),
               style: OutlinedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 52),
               ),

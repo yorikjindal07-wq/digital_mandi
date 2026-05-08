@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "digital_mandi" "\0"
+            VALUE "FileDescription", "bharatiya AI kisan" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "digital_mandi" "\0"
+            VALUE "InternalName", "bharatiya AI kisan" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 com.example. All rights reserved." "\0"
-            VALUE "OriginalFilename", "digital_mandi.exe" "\0"
-            VALUE "ProductName", "digital_mandi" "\0"
+            VALUE "OriginalFilename", "bharatiya AI kisan.exe" "\0"
+            VALUE "ProductName", "bharatiya AI kisan" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

@@ -1,3 +1,9 @@
+databases:
+  - name: digital-mandi-postgres
+    databaseName: digital_mandi
+    user: digital_mandi_user
+    plan: free
+
 services:
   - type: web
     name: digital-mandi-backend
@@ -13,11 +19,35 @@ services:
         value: 3.11.9
       - key: HUGGING_FACE_API_KEY
         sync: false
+      - key: OPENWEATHER_API_KEY
+        sync: false
       - key: HUGGING_FACE_MODEL
         value: katanemo/Arch-Router-1.5B:hf-inference
       - key: HUGGING_FACE_API_URL
         value: https://router.huggingface.co/v1/chat/completions
       - key: CORS_ALLOW_ORIGINS
-        value: "*"
-      - key: SQLITE_PATH
-        value: /tmp/digital_mandi.db
+        sync: false
+      - key: JWT_SECRET_KEY
+        sync: false
+      - key: JWT_REFRESH_SECRET_KEY
+        sync: false
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "60"
+      - key: REFRESH_TOKEN_EXPIRE_DAYS
+        value: "14"
+      - key: PASSWORD_MIN_LENGTH
+        value: "8"
+      - key: ADMIN_API_TOKEN
+        sync: false
+      - key: RATE_LIMIT_GENERAL_PER_MINUTE
+        value: "120"
+      - key: RATE_LIMIT_AUTH_PER_MINUTE
+        value: "10"
+      - key: RATE_LIMIT_CHAT_PER_MINUTE
+        value: "20"
+      - key: RATE_LIMIT_WRITE_PER_MINUTE
+        value: "30"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: digital-mandi-postgres
+          property: connectionString

@@ -1,22 +1,23 @@
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.api.db.database import get_db
 from app.api.db.models import DiseaseReport
+from app.security import get_current_user
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 class PredictionPayload(BaseModel):
-    crop: str = Field(..., examples=["tomato"])
-    disease: str = Field(..., examples=["early_blight"])
+    crop: str = Field(..., min_length=1, max_length=80, examples=["tomato"])
+    disease: str = Field(..., min_length=1, max_length=120, examples=["early_blight"])
     confidence: float = Field(..., ge=0.0, le=1.0)
-    region: Optional[str] = None
-    device_id: Optional[str] = None
+    region: Optional[str] = Field(default=None, max_length=120)
+    device_id: Optional[str] = Field(default=None, max_length=120)
     created_at: Optional[datetime] = None
 
 
@@ -65,8 +66,8 @@ def receive_report(
 
 @router.get("/reports", response_model=list[ReportResponse])
 def get_reports(
-    limit: int = 50,
-    crop: Optional[str] = None,
+    limit: int = Query(default=50, ge=1, le=100),
+    crop: Optional[str] = Query(default=None, min_length=1, max_length=80),
     db: Session = Depends(get_db),
 ) -> list[ReportResponse]:
     query = db.query(DiseaseReport)

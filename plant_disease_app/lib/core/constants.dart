@@ -9,6 +9,8 @@
 //   - Null-safe constants
 // ─────────────────────────────────────────────────────────────────────────
 
+import 'package:flutter/foundation.dart';
+
 class AppConstants {
   AppConstants._();
 
@@ -42,6 +44,10 @@ class AppConstants {
     'BACKEND_BASE_URL',
     defaultValue: '',
   );
+  static const String backendApiToken = String.fromEnvironment(
+    'BACKEND_API_TOKEN',
+    defaultValue: '',
+  );
   static const Duration apiTimeout = Duration(seconds: 30);
 
   // 🌦️ Weather API (OpenWeatherMap)
@@ -58,7 +64,8 @@ class AppConstants {
       'https://api.openweathermap.org/data/2.5/forecast';
 
   // Weather API timeout
-  static const Duration weatherApiTimeout = Duration(seconds: 15);
+  static const Duration weatherApiTimeout = Duration(seconds: 30);
+  static const bool allowDirectProviderAccessInRelease = false;
 
   // ════════════════════════════════════════════════════════════════════════
   // ML MODEL CONFIGURATION
@@ -69,6 +76,7 @@ class AppConstants {
 
   // 🌱 Crop Recommendation Model
   static const String cropModelPath = 'assets/model/crop_model.tflite';
+  static const String cropScalerPath = 'assets/data/crop_scaler.json';
 
   // Model input specifications
   static const int modelInputWidth = 224;
@@ -226,14 +234,34 @@ class AppConstants {
 
   /// Check if API keys are properly configured
   static bool isProperlyConfigured() {
-    return hasOpenWeatherApiKey && hasHuggingFaceApiKey && hasBackendBaseUrl;
+    return hasBackendBaseUrl ||
+        (canUseDirectWeatherProvider && canUseDirectAiProvider);
   }
 
   static bool get hasOpenWeatherApiKey => openWeatherApiKey.isNotEmpty;
 
   static bool get hasHuggingFaceApiKey => huggingFaceApiKey.isNotEmpty;
 
-  static bool get hasBackendBaseUrl => backendBaseUrl.isNotEmpty;
+  static bool get hasBackendBaseUrl => backendBaseUri != null;
+
+  static bool get canUseDirectAiProvider {
+    if (kReleaseMode && !allowDirectProviderAccessInRelease) {
+      return false;
+    }
+    return hasHuggingFaceApiKey && huggingFaceUri != null;
+  }
+
+  static bool get canUseDirectWeatherProvider {
+    if (kReleaseMode && !allowDirectProviderAccessInRelease) {
+      return false;
+    }
+    return hasOpenWeatherApiKey;
+  }
+
+  static Uri? get backendBaseUri =>
+      _parseUri(backendBaseUrl, allowDebugHttpLocalhost: true);
+
+  static Uri? get huggingFaceUri => _parseUri(huggingFaceApiUrl);
 
   /// Get weather API URL for a city
   static String getWeatherUrl(
@@ -278,5 +306,59 @@ class AppConstants {
   /// Get crop label index
   static int getCropIndex(String label) {
     return cropLabels.indexOf(label);
+  }
+
+  static Uri? backendUri(String path, {Map<String, dynamic>? queryParameters}) {
+    final base = backendBaseUri;
+    if (base == null) {
+      return null;
+    }
+
+    final sanitizedBasePath = base.path.endsWith('/')
+        ? base.path.substring(0, base.path.length - 1)
+        : base.path;
+    final sanitizedPath = path.startsWith('/') ? path : '/$path';
+
+    return base.replace(
+      path: '$sanitizedBasePath$sanitizedPath',
+      queryParameters: queryParameters?.map(
+        (key, value) => MapEntry(key, value.toString()),
+      ),
+    );
+  }
+
+  static Uri? _parseUri(
+    String rawValue, {
+    bool allowDebugHttpLocalhost = false,
+  }) {
+    if (rawValue.trim().isEmpty) {
+      return null;
+    }
+
+    final parsed = Uri.tryParse(rawValue.trim());
+    if (parsed == null || !parsed.hasScheme || !parsed.hasAuthority) {
+      return null;
+    }
+
+    final isHttps = parsed.scheme.toLowerCase() == 'https';
+    if (isHttps) {
+      return parsed;
+    }
+
+    final isLocalDebugHttp =
+        allowDebugHttpLocalhost &&
+        !kReleaseMode &&
+        parsed.scheme.toLowerCase() == 'http' &&
+        _isLoopbackHost(parsed.host);
+
+    return isLocalDebugHttp ? parsed : null;
+  }
+
+  static bool _isLoopbackHost(String host) {
+    final normalized = host.trim().toLowerCase();
+    return normalized == 'localhost' ||
+        normalized == '127.0.0.1' ||
+        normalized == '::1' ||
+        normalized == '10.0.2.2';
   }
 }

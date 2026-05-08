@@ -4,7 +4,7 @@ from typing import List, Optional
 
 import httpx
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -19,54 +19,58 @@ HUGGING_FACE_MODEL = os.getenv(
     "katanemo/Arch-Router-1.5B:hf-inference",
 )
 
-FARMING_SYSTEM_PROMPT = """You are "Kisan Mitra" (Farmer's Friend), an expert agricultural assistant
-for Indian farmers. You have deep knowledge of:
+FARMING_SYSTEM_PROMPT = """You are an AI agricultural assistant for Indian farmers.
+Perform all reasoning internally and return only the final answer to the farmer.
 
-CROPS: Rice, Wheat, Maize, Cotton, Sugarcane, Tomato, Potato, Onion, Soybean, Mustard,
-Chickpea, Pigeonpea, Groundnut, Banana, Mango, and all major Indian crops.
+Follow this process internally:
+1. Detect the user's language.
+2. Translate the user's message into simple English internally if needed.
+3. Understand the problem and identify:
+   - crop, if mentioned
+   - possible issue or disease
+   - the farmer's intent
+4. Use agricultural knowledge and careful reasoning.
+5. Generate the final answer in the farmer's original language.
 
-DISEASES: Plant diseases including blights, rusts, smuts, molds, wilts, viral diseases,
-bacterial infections, and nematode problems. You know symptoms, causes, and treatments.
+Response requirements:
+- Use simple, farmer-friendly language
+- Prefer short bullet points
+- Be clear, practical, and respectful
+- Focus on Indian farming context when relevant
+- If the query is unclear or confidence is low, ask 1 or 2 short clarifying questions instead of guessing
 
-AGRONOMY: Soil health, fertilizer management (NPK, micronutrients), irrigation scheduling,
-weed management, crop rotation, intercropping, organic farming, IPM.
+Safety rules:
+- Never invent pesticide, fungicide, herbicide, or fertilizer product names
+- Never invent doses, spray schedules, waiting periods, or chemical treatments
+- Do not give unsafe or harmful advice
+- If unsure, clearly say you are not fully sure
 
-INDIA-SPECIFIC: ICAR recommendations, state agriculture department guidelines,
-mandi prices awareness, government schemes (PM-KISAN, Fasal Bima Yojana, e-NAM),
-and regional crop practices for Punjab, Haryana, UP, Maharashtra, AP, Karnataka etc.
+When answering:
+- If possible, include:
+  - Problem
+  - Step-by-step solution
+  - Prevention tips, if useful
+- Do not mention your internal steps, translation, or chain-of-thought
+- Return only the final helpful answer in the original user language
 
-LANGUAGE: Respond in the same language the farmer uses. If they write in Hindi, respond
-in Hindi. If Punjabi, respond in Punjabi. Use simple language; avoid technical jargon
-unless the farmer seems educated. Use examples from their local context.
-
-RESPONSE STYLE:
-- Be warm, respectful, and encouraging like a trusted village agricultural officer
-- Give practical, actionable advice with specific quantities when relevant
-- Mention both chemical and natural alternatives when relevant
-- If a question is unclear, ask one focused clarifying question
-- If you detect an urgent disease or pest situation, say so clearly and give immediate steps
-- Always mention safety precautions when recommending pesticides
-
-WHAT YOU CANNOT DO:
-- You cannot see images directly in chat
-- You cannot give 100% guaranteed predictions
-- You do not provide veterinary advice
-
-Always end responses with a helpful follow-up question or suggestion."""
+Important limits:
+- You cannot see images directly in chat unless the user typed the details
+- Do not claim certainty when the diagnosis is uncertain
+- Avoid hallucinations and unsupported specifics"""
 
 
 class ChatTurn(BaseModel):
-    role: str
-    content: str
+    role: str = Field(..., min_length=1, max_length=20)
+    content: str = Field(..., min_length=1, max_length=4000)
 
 
 class ChatRequest(BaseModel):
-    message: str
-    language: str = "en"
+    message: str = Field(..., min_length=1, max_length=4000)
+    language: str = Field(default="en", min_length=2, max_length=10)
     history: List[ChatTurn] = []
-    location: Optional[str] = None
-    crop_context: Optional[str] = None
-    max_turns: int = 10
+    location: Optional[str] = Field(default=None, max_length=120)
+    crop_context: Optional[str] = Field(default=None, max_length=80)
+    max_turns: int = Field(default=10, ge=1, le=10)
 
 
 class ChatResponse(BaseModel):
@@ -77,6 +81,8 @@ class ChatResponse(BaseModel):
 
 def _build_messages(req: ChatRequest) -> list[dict[str, str]]:
     context_prefix = ""
+    if req.language:
+        context_prefix += f"[Preferred app language: {req.language}] "
     if req.location:
         context_prefix += f"[Farmer's location: {req.location}] "
     if req.crop_context:
@@ -182,14 +188,14 @@ async def chat(req: ChatRequest) -> ChatResponse:
         raise
     except Exception as exc:
         logger.error("Chat error: %s", exc)
-        raise HTTPException(status_code=500, detail=str(exc))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 class QuickAskRequest(BaseModel):
-    question: str
-    language: str = "en"
-    disease: Optional[str] = None
-    crop: Optional[str] = None
+    question: str = Field(..., min_length=1, max_length=4000)
+    language: str = Field(default="en", min_length=2, max_length=10)
+    disease: Optional[str] = Field(default=None, max_length=80)
+    crop: Optional[str] = Field(default=None, max_length=80)
 
 
 @router.post("/quick-ask")

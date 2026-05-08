@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../core/constants.dart';
 import '../models/models.dart';
 import '../providers/app_provider.dart';
+import '../providers/auth_provider.dart';
 import '../services/sync_service.dart';
 import '../widgets/language_selector.dart';
+import 'auth_screen.dart';
 import 'camera_screen.dart';
 import 'chat_screen.dart';
 import 'crop_recommend_screen.dart';
@@ -36,6 +39,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
+    final authProvider = context.watch<AuthProvider>();
     final l10n = provider.l10n;
     final scheme = Theme.of(context).colorScheme;
     final items = [
@@ -126,6 +130,17 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           IconButton(
             icon: Icon(
+              authProvider.isAuthenticated
+                  ? Icons.verified_user_rounded
+                  : Icons.login_rounded,
+            ),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const AuthScreen()),
+            ),
+          ),
+          IconButton(
+            icon: Icon(
               provider.themeMode == ThemeMode.dark
                   ? Icons.light_mode
                   : Icons.dark_mode,
@@ -143,6 +158,20 @@ class _HomeScreenState extends State<HomeScreen> {
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
+          if (AppConstants.hasBackendBaseUrl)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                child: _AuthStatusBanner(
+                  isAuthenticated: authProvider.isAuthenticated,
+                  email: authProvider.user?.email,
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const AuthScreen()),
+                  ),
+                ),
+              ),
+            ),
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
@@ -289,6 +318,79 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AuthStatusBanner extends StatelessWidget {
+  const _AuthStatusBanner({
+    required this.isAuthenticated,
+    required this.email,
+    required this.onTap,
+  });
+
+  final bool isAuthenticated;
+  final String? email;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(22),
+      child: Ink(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: isAuthenticated
+              ? const Color(0xFFE3F4E8)
+              : scheme.secondaryContainer,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(
+            color: isAuthenticated
+                ? const Color(0xFF7AC690)
+                : scheme.outline.withValues(alpha: 0.25),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              isAuthenticated
+                  ? Icons.shield_rounded
+                  : Icons.lock_person_rounded,
+              color: isAuthenticated
+                  ? const Color(0xFF2F8F46)
+                  : scheme.onSecondaryContainer,
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    isAuthenticated
+                        ? 'Secure sync is on'
+                        : 'Sign in to secure your synced reports',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    isAuthenticated
+                        ? 'Signed in as ${email ?? 'your account'}.'
+                        : 'Backend sync now uses your account session instead of one shared app token.',
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Icon(Icons.chevron_right_rounded),
           ],
         ),
       ),

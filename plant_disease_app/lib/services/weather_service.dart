@@ -31,7 +31,13 @@ class WeatherService {
       throw ValidationException(message: 'City name cannot be empty');
     }
 
-    if (!AppConstants.hasOpenWeatherApiKey) {
+    final backendWeatherUri = AppConstants.backendUri(
+      '/api/v1/weather/by-city',
+      queryParameters: {'city': city, 'language': languageCode},
+    );
+    final useBackend = backendWeatherUri != null;
+
+    if (!useBackend && !AppConstants.canUseDirectWeatherProvider) {
       _logMissingWeatherConfig();
       return _getCachedWeatherOrThrow(city);
     }
@@ -39,9 +45,14 @@ class WeatherService {
     try {
       final response = await _client
           .get(
-            Uri.parse(
-              AppConstants.getWeatherUrl(city, languageCode: languageCode),
-            ),
+            useBackend
+                ? backendWeatherUri
+                : Uri.parse(
+                    AppConstants.getWeatherUrl(
+                      city,
+                      languageCode: languageCode,
+                    ),
+                  ),
           )
           .timeout(AppConstants.weatherApiTimeout);
 
@@ -85,23 +96,35 @@ class WeatherService {
       throw ValidationException(message: 'Invalid coordinates');
     }
 
-    if (!AppConstants.hasOpenWeatherApiKey) {
+    final backendWeatherUri = AppConstants.backendUri(
+      '/api/v1/weather/by-coordinates',
+      queryParameters: {
+        'latitude': latitude,
+        'longitude': longitude,
+        'language': languageCode,
+      },
+    );
+    final useBackend = backendWeatherUri != null;
+
+    if (!useBackend && !AppConstants.canUseDirectWeatherProvider) {
       _logMissingWeatherConfig();
       throw NetworkException(
         message:
-            'Weather API key not configured. Pass OPENWEATHER_API_KEY with --dart-define.',
+            'Secure weather backend is not configured. Configure BACKEND_BASE_URL for live weather.',
       );
     }
 
     final response = await _client
         .get(
-          Uri.parse(
-            AppConstants.getWeatherUrlByCoordinates(
-              latitude,
-              longitude,
-              languageCode: languageCode,
-            ),
-          ),
+          useBackend
+              ? backendWeatherUri
+              : Uri.parse(
+                  AppConstants.getWeatherUrlByCoordinates(
+                    latitude,
+                    longitude,
+                    languageCode: languageCode,
+                  ),
+                ),
         )
         .timeout(AppConstants.weatherApiTimeout);
 
@@ -123,16 +146,24 @@ class WeatherService {
       throw ValidationException(message: 'City name cannot be empty');
     }
 
-    if (!AppConstants.hasOpenWeatherApiKey) {
+    final backendForecastUri = AppConstants.backendUri(
+      '/api/v1/weather/forecast',
+      queryParameters: {'city': city, 'language': languageCode},
+    );
+    final useBackend = backendForecastUri != null;
+
+    if (!useBackend && !AppConstants.canUseDirectWeatherProvider) {
       _logMissingWeatherConfig();
       return const [];
     }
 
     final response = await _client
         .get(
-          Uri.parse(
-            AppConstants.getForecastUrl(city, languageCode: languageCode),
-          ),
+          useBackend
+              ? backendForecastUri
+              : Uri.parse(
+                  AppConstants.getForecastUrl(city, languageCode: languageCode),
+                ),
         )
         .timeout(AppConstants.weatherApiTimeout);
 
@@ -328,7 +359,7 @@ class WeatherService {
     } catch (_) {
       throw NetworkException(
         message:
-            'Weather API key not configured and no recent cached weather is available. Pass OPENWEATHER_API_KEY with --dart-define.',
+            'Live weather is unavailable and no recent cached weather is available. Check BACKEND_BASE_URL or your backend weather configuration.',
       );
     }
   }
@@ -349,7 +380,7 @@ class WeatherService {
     if (_loggedMissingWeatherConfig) return;
     _loggedMissingWeatherConfig = true;
     debugPrint(
-      'Live weather is disabled until OPENWEATHER_API_KEY is provided with --dart-define.',
+      'Live weather is disabled until a secure backend is configured or direct provider access is enabled for a non-release build.',
     );
   }
 

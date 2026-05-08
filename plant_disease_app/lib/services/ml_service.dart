@@ -1,11 +1,13 @@
-﻿// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
 // lib/services/ml_service.dart
 // TFLite model inference for disease detection and crop recommendation
 // Production-grade error handling and fallback mechanisms
 // ═══════════════════════════════════════════════════════════════
 
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
 import 'package:tflite_flutter/tflite_flutter.dart';
 import '../models/models.dart';
@@ -18,6 +20,7 @@ class MLService {
 
   Interpreter? _diseaseInterpreter;
   Interpreter? _cropInterpreter;
+  _CropScalerConfig? _cropScalerConfig;
   bool _isInitialized = false;
   String? _lastError;
 
@@ -35,7 +38,7 @@ class MLService {
   Future<bool> loadModels() async {
     try {
       debugPrint('📱 Starting ML model loading...');
-      
+
       // Load disease detection model
       try {
         _diseaseInterpreter = await Interpreter.fromAsset(
@@ -60,7 +63,7 @@ class MLService {
 
       // Mark as initialized if at least one model loaded
       _isInitialized = _diseaseInterpreter != null || _cropInterpreter != null;
-      
+
       if (_isInitialized) {
         debugPrint('✅ ML Service initialized successfully');
       } else {
@@ -115,8 +118,10 @@ class MLService {
 
       // Pre-process image with timeout
       debugPrint('🖼️  Processing image: ${imageFile.path}');
-      final inputTensor =
-          await _preprocessImage(imageFile, inputMeta).timeout(timeout);
+      final inputTensor = await _preprocessImage(
+        imageFile,
+        inputMeta,
+      ).timeout(timeout);
 
       // Prepare output tensor
       final output = _createOutputBuffer(outputMeta.shape, outputMeta.type);
@@ -156,7 +161,9 @@ class MLService {
       final disease = AppConstants.diseaseLabels[topIndex];
       final remedy = RemedyService.getRemedy(disease);
 
-      debugPrint('✅ Prediction: $disease (${(confidence * 100).toStringAsFixed(1)}%)');
+      debugPrint(
+        '✅ Prediction: $disease (${(confidence * 100).toStringAsFixed(1)}%)',
+      );
 
       return PredictionModel(
         disease: disease,
@@ -205,7 +212,11 @@ class MLService {
       debugPrint('🌾 Processing crop recommendation...');
 
       // Build input tensor
-      final features = input.toFeatureVector();
+      final scalerConfig = await _loadCropScalerConfig();
+      final features = _normalizeCropFeatures(
+        input.toFeatureVector(),
+        scalerConfig,
+      );
       final inputTensor = [Float32List.fromList(features)];
 
       // Get output shape
@@ -229,10 +240,12 @@ class MLService {
       );
       indexed.sort((a, b) => b.value.compareTo(a.value));
 
-      final topCrops = indexed
-          .take(3)
-          .map((e) => AppConstants.cropLabels[e.key % AppConstants.cropLabels.length])
-          .toList();
+      final labels = _resolveCropLabels(
+        expectedCount: scores.length,
+        scalerConfig: scalerConfig,
+      );
+
+      final topCrops = indexed.take(3).map((e) => labels[e.key]).toList();
 
       debugPrint('✅ Top crops: $topCrops');
       return topCrops;
@@ -255,10 +268,7 @@ class MLService {
 
   /// Pre-process image for disease detection model
   /// Returns a tensor object matching the model's declared input shape and type.
-  Future<Object> _preprocessImage(
-    File imageFile,
-    Tensor inputTensor,
-  ) async {
+  Future<Object> _preprocessImage(File imageFile, Tensor inputTensor) async {
     try {
       debugPrint('🖼️  Reading image from: ${imageFile.path}');
       final bytes = await imageFile.readAsBytes();
@@ -342,6 +352,7 @@ class MLService {
     try {
       _diseaseInterpreter?.close();
       _cropInterpreter?.close();
+      _cropScalerConfig = null;
       _isInitialized = false;
       debugPrint('✅ ML Service disposed');
     } catch (e) {
@@ -363,7 +374,8 @@ class MLService {
 
     if (!channelsLast && !channelsFirst) {
       throw AppException(
-        message: 'Cannot infer channel placement from disease model shape: $shape',
+        message:
+            'Cannot infer channel placement from disease model shape: $shape',
         code: 'UNSUPPORTED_INPUT_SHAPE',
       );
     }
@@ -399,7 +411,8 @@ class MLService {
       case TensorType.uint8:
         if (inputTensor.params.scale > 0) {
           final quantized =
-              ((rawValue / 255.0) / inputTensor.params.scale + inputTensor.params.zeroPoint)
+              ((rawValue / 255.0) / inputTensor.params.scale +
+                      inputTensor.params.zeroPoint)
                   .round();
           return quantized.clamp(0, 255);
         }
@@ -407,7 +420,8 @@ class MLService {
       case TensorType.int8:
         if (inputTensor.params.scale > 0) {
           final quantized =
-              ((rawValue / 255.0) / inputTensor.params.scale + inputTensor.params.zeroPoint)
+              ((rawValue / 255.0) / inputTensor.params.scale +
+                      inputTensor.params.zeroPoint)
                   .round();
           return quantized.clamp(-128, 127);
         }
@@ -515,6 +529,63 @@ class MLService {
     collect(output);
     return values;
   }
+
+  Future<_CropScalerConfig> _loadCropScalerConfig() async {
+    if (_cropScalerConfig != null) {
+      return _cropScalerConfig!;
+    }
+
+    final rawJson = await rootBundle.loadString(AppConstants.cropScalerPath);
+    final decoded = jsonDecode(rawJson) as Map<String, dynamic>;
+
+    _cropScalerConfig = _CropScalerConfig(
+      mean: List<double>.from(decoded['mean'] as List),
+      scale: List<double>.from(decoded['scale'] as List),
+      classes: List<String>.from(decoded['classes'] as List),
+    );
+    return _cropScalerConfig!;
+  }
+
+  List<double> _normalizeCropFeatures(
+    List<double> features,
+    _CropScalerConfig scalerConfig,
+  ) {
+    if (features.length != scalerConfig.mean.length ||
+        features.length != scalerConfig.scale.length) {
+      throw AppException(
+        message:
+            'Crop scaler expects ${scalerConfig.mean.length} features, but got ${features.length}.',
+        code: 'SCALER_MISMATCH',
+      );
+    }
+
+    return List<double>.generate(features.length, (index) {
+      final scale = scalerConfig.scale[index];
+      if (scale == 0) {
+        return features[index] - scalerConfig.mean[index];
+      }
+      return (features[index] - scalerConfig.mean[index]) / scale;
+    });
+  }
+
+  List<String> _resolveCropLabels({
+    required int expectedCount,
+    required _CropScalerConfig scalerConfig,
+  }) {
+    if (scalerConfig.classes.length == expectedCount) {
+      return scalerConfig.classes;
+    }
+
+    if (AppConstants.cropLabels.length == expectedCount) {
+      return AppConstants.cropLabels;
+    }
+
+    throw AppException(
+      message:
+          'Crop model output has $expectedCount classes, but no matching label set was found.',
+      code: 'LABEL_MISMATCH',
+    );
+  }
 }
 
 class _ImageTensorConfig {
@@ -529,4 +600,16 @@ class _ImageTensorConfig {
   final int height;
   final int channels;
   final bool channelsFirst;
+}
+
+class _CropScalerConfig {
+  const _CropScalerConfig({
+    required this.mean,
+    required this.scale,
+    required this.classes,
+  });
+
+  final List<double> mean;
+  final List<double> scale;
+  final List<String> classes;
 }

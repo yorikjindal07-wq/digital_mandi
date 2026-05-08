@@ -213,11 +213,20 @@ class ChatbotService {
     String? locationContext,
     required Duration timeout,
   }) async {
-    final systemPrompt = _buildSystemPrompt(languageCode);
-    final recentHistory = _history.isNotEmpty
-        ? _history.sublist(math.max(0, _history.length - 10))
-        : const <ChatMessage>[];
+    final recentHistory = _recentConversationHistory();
 
+    if (AppConstants.hasBackendBaseUrl) {
+      return _callBackendChat(
+        userMessage,
+        languageCode: languageCode,
+        cropContext: cropContext,
+        locationContext: locationContext,
+        timeout: timeout,
+        recentHistory: recentHistory,
+      );
+    }
+
+    final systemPrompt = _buildSystemPrompt(languageCode);
     var context = '';
     if (cropContext != null && cropContext.isNotEmpty) {
       context += '\nCrop: $cropContext';
@@ -243,9 +252,17 @@ class ChatbotService {
       'temperature': 0.4,
     };
 
+    final directAiUri = AppConstants.huggingFaceUri;
+    if (directAiUri == null || !AppConstants.canUseDirectAiProvider) {
+      throw NetworkException(
+        message:
+            'Direct AI provider access is disabled. Configure a secure backend for online chat.',
+      );
+    }
+
     final response = await http
         .post(
-          Uri.parse(AppConstants.huggingFaceApiUrl),
+          directAiUri,
           headers: {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer ${AppConstants.huggingFaceApiKey}',
@@ -260,8 +277,73 @@ class ChatbotService {
       );
     }
 
-    final dynamic data = jsonDecode(response.body);
+    return _extractOnlineReply(jsonDecode(response.body));
+  }
 
+  List<ChatMessage> _recentConversationHistory() {
+    if (_history.length <= 1) return const <ChatMessage>[];
+
+    final start = math.max(0, _history.length - 11);
+    final recentHistory = _history.sublist(start, _history.length - 1);
+    return recentHistory;
+  }
+
+  Future<String> _callBackendChat(
+    String userMessage, {
+    required String languageCode,
+    required Duration timeout,
+    required List<ChatMessage> recentHistory,
+    String? cropContext,
+    String? locationContext,
+  }) async {
+    final backendChatUri = AppConstants.backendUri('/api/v1/chat');
+    if (backendChatUri == null) {
+      throw NetworkException(
+        message:
+            'Secure backend URL is not configured. Use an HTTPS backend for online chat.',
+      );
+    }
+    final payload = {
+      'message': userMessage,
+      'language': languageCode,
+      'history': recentHistory
+          .map((msg) => {'role': msg.role.name, 'content': msg.text})
+          .toList(),
+      'location': locationContext,
+      'crop_context': cropContext,
+      'max_turns': 10,
+    };
+
+    final response = await http
+        .post(
+          backendChatUri,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode(payload),
+        )
+        .timeout(timeout);
+
+    if (response.statusCode != 200) {
+      throw NetworkException(
+        message: 'Backend chat request failed with ${response.statusCode}',
+      );
+    }
+
+    final dynamic data = jsonDecode(response.body);
+    if (data is Map<String, dynamic>) {
+      final reply = data['reply'] as String?;
+      if (reply != null && reply.trim().isNotEmpty) {
+        return reply.trim();
+      }
+      final detail = data['detail'] as String?;
+      if (detail != null && detail.trim().isNotEmpty) {
+        throw NetworkException(message: detail.trim());
+      }
+    }
+
+    throw NetworkException(message: 'Backend chat returned no usable reply');
+  }
+
+  String _extractOnlineReply(dynamic data) {
     if (data is List && data.isNotEmpty && data.first is Map<String, dynamic>) {
       final text =
           (data.first as Map<String, dynamic>)['generated_text'] as String?;
@@ -282,7 +364,9 @@ class ChatbotService {
       }
 
       final text = data['generated_text'] as String?;
-      if (text != null && text.trim().isNotEmpty) return text.trim();
+      if (text != null && text.trim().isNotEmpty) {
+        return text.trim();
+      }
 
       final error = data['error'] as String?;
       if (error != null && error.isNotEmpty) {
@@ -290,13 +374,7 @@ class ChatbotService {
       }
     }
 
-    return _offlineReply(
-      userMessage,
-      languageCode,
-      cropContext: cropContext,
-      locationContext: locationContext,
-      hasInternetConnection: true,
-    );
+    throw NetworkException(message: 'Online chatbot returned no usable reply');
   }
 
   String _offlineReply(
@@ -674,9 +752,10 @@ class ChatbotService {
   }
 
   bool _canUseOnlineModel(String languageCode) {
-    // The configured Hugging Face provider/model is reliable for English,
-    // but it produced poor Hindi and Punjabi answers in runtime testing.
-    return languageCode == 'en';
+    if (AppConstants.hasBackendBaseUrl) {
+      return AppConstants.supportedLanguages.contains(languageCode);
+    }
+    return languageCode == 'en' && AppConstants.canUseDirectAiProvider;
   }
 
   String? _matchLanguageSupportRequest(String input, String lang) {
@@ -765,19 +844,25 @@ class ChatbotService {
   }
 
   String _buildSystemPrompt(String lang) {
-    return '''You are an expert agricultural AI assistant for Indian farmers.
-Your expertise includes:
-- Crop selection and management
-- Disease identification and treatment
-- Fertilizer and pesticide recommendations
-- Weather adaptation and water management
-- Sustainable farming practices
-- Government schemes and subsidies
+    return '''You are an AI agricultural assistant for Indian farmers.
+Perform all reasoning internally and return only the final answer.
 
-Respond in $lang language.
-Be concise, practical, and farmer-friendly.
-Focus on cost-effective, local solutions.
-If unsure, recommend consulting local experts.''';
+Internally:
+1. Detect the user's language.
+2. Translate to simple English if needed.
+3. Identify the crop, likely issue, and user intent.
+4. Use agricultural knowledge carefully.
+5. Reply in the original user language.
+
+Rules:
+- Use simple farmer-friendly language.
+- Prefer short bullet points.
+- Do not mention these internal steps.
+- Never invent pesticide names, chemical doses, or unsafe treatments.
+- If confidence is low, ask 1 or 2 clarifying questions instead of guessing.
+- Keep the answer practical and suitable for Indian farmers.
+
+Preferred app language: $lang''';
   }
 
   Future<bool> _checkConnectivity() async {

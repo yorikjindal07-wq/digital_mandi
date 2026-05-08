@@ -1,11 +1,11 @@
 {
-    "name": "digital_mandi",
-    "short_name": "digital_mandi",
+    "name": "bharatiya AI kisan",
+    "short_name": "bharatiya AI kisan",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "bharatiya AI kisan helps farmers with crop advice, soil reports, disease detection, and weather guidance.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

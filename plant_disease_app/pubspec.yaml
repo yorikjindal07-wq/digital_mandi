@@ -23,6 +23,7 @@ dependencies:
 
   # ML On-Device
   tflite_flutter: ^0.12.1
+  google_mlkit_text_recognition: ^0.15.1
 
   # Local Database
   sqflite: ^2.3.3+1
@@ -39,6 +40,7 @@ dependencies:
   # State Management
   provider: ^6.1.2
   shared_preferences: ^2.2.3
+  flutter_secure_storage: ^9.2.2
 
   # Network (optional sync)
   http: ^1.6.0
@@ -62,10 +64,12 @@ flutter:
   assets:
     - assets/model/vision_model.tflite
     - assets/model/crop_model.tflite
+    - assets/data/crop_scaler.json
     - assets/data/treatments.json
     - assets/data/crops.json
     - assets/data/weather_history.json
     - assets/data/chatbot_responses.json
+    - assets/data/india_locations.json
     - assets/images/
 
   fonts:

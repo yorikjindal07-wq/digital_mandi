@@ -11,13 +11,15 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 import 'core/theme.dart';
 import 'core/constants.dart';
+import 'providers/auth_provider.dart';
+import 'providers/app_provider.dart';
+import 'screens/home_screen.dart';
+import 'services/auth_service.dart';
 import 'services/ml_service.dart';
 import 'services/chatbot_service.dart';
 import 'services/sync_service.dart';
 import 'services/voice_services.dart';
 import 'data/local_db.dart' as local_db;
-import 'providers/app_provider.dart';
-import 'screens/home_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,7 +35,7 @@ void main() async {
   // Init SQLite database
   await local_db.LocalDatabase.instance.db;
 
-  if (!AppConstants.hasOpenWeatherApiKey) {
+  if (!AppConstants.hasBackendBaseUrl && !AppConstants.hasOpenWeatherApiKey) {
     debugPrint(
       'Weather API key not configured. Live weather will use cached/offline data.',
     );
@@ -59,6 +61,9 @@ void main() async {
   // Init voice services
   await TTSService.instance.initialize();
 
+  // Restore any persisted secure auth session before sync starts.
+  await AuthService.instance.initialize();
+
   // Start background sync listener
   SyncService.instance.startListening();
 
@@ -71,7 +76,10 @@ class DigitalMandiApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
-      providers: [ChangeNotifierProvider(create: (_) => AppProvider())],
+      providers: [
+        ChangeNotifierProvider(create: (_) => AppProvider()),
+        ChangeNotifierProvider(create: (_) => AuthProvider()..initialize()),
+      ],
       child: Consumer<AppProvider>(
         builder: (context, provider, _) {
           return MaterialApp(

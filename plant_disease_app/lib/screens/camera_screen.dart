@@ -1,17 +1,13 @@
-// ─────────────────────────────────────────────
-// screens/camera_screen.dart
-// Handles both camera capture and gallery pick,
-// then runs the TFLite disease detection model.
-// ─────────────────────────────────────────────
-
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+
+import '../models/models.dart';
 import '../providers/app_provider.dart';
 import '../services/ml_service.dart';
 import '../services/sync_service.dart';
-import '../models/models.dart';
 import 'result_screen.dart';
 
 class CameraScreen extends StatefulWidget {
@@ -30,7 +26,6 @@ class _CameraScreenState extends State<CameraScreen> {
 
   final ImagePicker _picker = ImagePicker();
 
-  // ── Image picking ─────────────────────────────
   Future<void> _pickImage(ImageSource source) async {
     final picked = await _picker.pickImage(
       source: source,
@@ -39,7 +34,9 @@ class _CameraScreenState extends State<CameraScreen> {
       maxHeight: 1024,
     );
 
-    if (picked == null) return;
+    if (picked == null) {
+      return;
+    }
 
     setState(() {
       _selectedImage = File(picked.path);
@@ -47,11 +44,14 @@ class _CameraScreenState extends State<CameraScreen> {
     });
   }
 
-  // ── Run detection ─────────────────────────────
   Future<void> _analyzeImage() async {
-    if (_selectedImage == null) return;
+    if (_selectedImage == null) {
+      return;
+    }
+
+    final l10n = context.read<AppProvider>().l10n;
     if (!MLService.instance.isLoaded) {
-      _showSnackBar('AI model loading... please wait');
+      _showSnackBar(l10n['ai_model_wait']);
       return;
     }
 
@@ -63,7 +63,6 @@ class _CameraScreenState extends State<CameraScreen> {
         crop: _selectedCrop,
       );
 
-      // Save to local database
       final report = DiseaseReport(
         crop: _selectedCrop,
         disease: prediction.disease,
@@ -73,9 +72,10 @@ class _CameraScreenState extends State<CameraScreen> {
       );
       await SyncService.instance.saveReportLocally(report);
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
-      // Navigate to results
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -88,10 +88,12 @@ class _CameraScreenState extends State<CameraScreen> {
       debugPrintStack(stackTrace: st);
       final message = e is AppException
           ? e.message
-          : 'Analysis failed. Please try again.';
+          : l10n['analysis_failed_retry'];
       _showSnackBar(message);
     } finally {
-      if (mounted) setState(() => _isAnalyzing = false);
+      if (mounted) {
+        setState(() => _isAnalyzing = false);
+      }
     }
   }
 
@@ -110,7 +112,6 @@ class _CameraScreenState extends State<CameraScreen> {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            // ── Crop selector ────────────────────
             Card(
               child: Padding(
                 padding: const EdgeInsets.symmetric(
@@ -119,9 +120,9 @@ class _CameraScreenState extends State<CameraScreen> {
                 ),
                 child: Row(
                   children: [
-                    const Text(
-                      'Crop: ',
-                      style: TextStyle(fontWeight: FontWeight.w600),
+                    Text(
+                      '${l10n['crop_label']}: ',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
@@ -130,16 +131,16 @@ class _CameraScreenState extends State<CameraScreen> {
                           value: _selectedCrop,
                           items: _crops
                               .map(
-                                (c) => DropdownMenuItem(
-                                  value: c,
-                                  child: Text(
-                                    c[0].toUpperCase() + c.substring(1),
-                                  ),
+                                (crop) => DropdownMenuItem(
+                                  value: crop,
+                                  child: Text(_localizedCropName(l10n, crop)),
                                 ),
                               )
                               .toList(),
-                          onChanged: (v) {
-                            if (v != null) setState(() => _selectedCrop = v);
+                          onChanged: (value) {
+                            if (value != null) {
+                              setState(() => _selectedCrop = value);
+                            }
                           },
                         ),
                       ),
@@ -148,10 +149,7 @@ class _CameraScreenState extends State<CameraScreen> {
                 ),
               ),
             ),
-
             const SizedBox(height: 16),
-
-            // ── Image preview ────────────────────
             GestureDetector(
               onTap: () => _pickImage(ImageSource.gallery),
               child: AnimatedContainer(
@@ -189,7 +187,7 @@ class _CameraScreenState extends State<CameraScreen> {
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            'Tap to select from gallery',
+                            l10n['tap_select_gallery'],
                             style: TextStyle(
                               color: scheme.onSurface.withValues(alpha: 0.4),
                               fontSize: 12,
@@ -199,10 +197,7 @@ class _CameraScreenState extends State<CameraScreen> {
                       ),
               ),
             ),
-
             const SizedBox(height: 20),
-
-            // ── Action buttons ───────────────────
             Row(
               children: [
                 Expanded(
@@ -228,16 +223,12 @@ class _CameraScreenState extends State<CameraScreen> {
                 ),
               ],
             ),
-
             const SizedBox(height: 16),
-
-            // ── Analyze button ───────────────────
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 250),
               child: _isAnalyzing
-                  ? Container(
+                  ? SizedBox(
                       height: 52,
-                      alignment: Alignment.center,
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -254,7 +245,7 @@ class _CameraScreenState extends State<CameraScreen> {
                   : ElevatedButton.icon(
                       onPressed: _selectedImage != null ? _analyzeImage : null,
                       icon: const Icon(Icons.search_rounded),
-                      label: const Text('Analyze Now'),
+                      label: Text(l10n['analyze_now']),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFE53935),
                         minimumSize: const Size(double.infinity, 52),
@@ -264,10 +255,7 @@ class _CameraScreenState extends State<CameraScreen> {
                       ),
                     ),
             ),
-
             const SizedBox(height: 20),
-
-            // ── Tips card ────────────────────────
             _TipsCard(l10n: l10n),
           ],
         ),
@@ -278,7 +266,8 @@ class _CameraScreenState extends State<CameraScreen> {
 
 class _TipsCard extends StatelessWidget {
   const _TipsCard({required this.l10n});
-  final dynamic l10n;
+
+  final AppL10n l10n;
 
   @override
   Widget build(BuildContext context) {
@@ -288,22 +277,22 @@ class _TipsCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Row(
+            Row(
               children: [
-                Icon(Icons.tips_and_updates, color: Color(0xFFF57F17)),
-                SizedBox(width: 8),
+                const Icon(Icons.tips_and_updates, color: Color(0xFFF57F17)),
+                const SizedBox(width: 8),
                 Text(
-                  'Tips for better results',
-                  style: TextStyle(fontWeight: FontWeight.w700),
+                  l10n['tips_title'],
+                  style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
               ],
             ),
             const SizedBox(height: 10),
             ...[
-              '📸 Take photo in bright natural light',
-              '🌿 Focus on the diseased leaf — fill the frame',
-              '📐 Keep camera 15–20 cm from the leaf',
-              '💧 Wipe water drops before capturing',
+              l10n['tips_1'],
+              l10n['tips_2'],
+              l10n['tips_3'],
+              l10n['tips_4'],
             ].map(
               (tip) => Padding(
                 padding: const EdgeInsets.symmetric(vertical: 3),
@@ -314,5 +303,22 @@ class _TipsCard extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+String _localizedCropName(AppL10n l10n, String crop) {
+  switch (crop) {
+    case 'tomato':
+      return l10n['crop_name_tomato'];
+    case 'potato':
+      return l10n['crop_name_potato'];
+    case 'wheat':
+      return l10n['crop_name_wheat'];
+    case 'rice':
+      return l10n['crop_name_rice'];
+    case 'cotton':
+      return l10n['crop_name_cotton'];
+    default:
+      return crop[0].toUpperCase() + crop.substring(1);
   }
 }

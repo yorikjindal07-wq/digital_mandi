@@ -77,6 +77,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
     _controller.clear();
     final lang = context.read<AppProvider>().languageCode;
+    final l10n = context.read<AppProvider>().l10n;
 
     // User message
     final userMsg = ChatMessage(text: text, role: MessageRole.user);
@@ -100,7 +101,7 @@ class _ChatScreenState extends State<ChatScreen> {
     } catch (e) {
       _addMessage(
         ChatMessage(
-          text: 'Sorry, I could not process that. Please try again.',
+          text: l10n['chat_error_retry'],
           role: MessageRole.assistant,
         ),
       );
@@ -182,7 +183,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         const Text('🤖', style: TextStyle(fontSize: 56)),
                         const SizedBox(height: 12),
                         Text(
-                          'Ask me anything about farming!',
+                          l10n['chat_empty_state'],
                           style: TextStyle(
                             color: scheme.onSurface.withValues(alpha: 0.5),
                           ),
@@ -214,11 +215,11 @@ class _ChatScreenState extends State<ChatScreen> {
               scrollDirection: Axis.horizontal,
               children:
                   [
-                        'Crop for sandy soil 🌾',
-                        'Tomato disease 🍅',
-                        'Best fertilizer 🌱',
-                        'Water schedule 💧',
-                        'Wheat blight 🌾',
+                        '${l10n['quick_prompt_crop']} 🌾',
+                        '${l10n['quick_prompt_tomato']} 🍅',
+                        '${l10n['quick_prompt_fertilizer']} 🌱',
+                        '${l10n['quick_prompt_water']} 💧',
+                        '${l10n['quick_prompt_wheat']} 🌾',
                       ]
                       .map(
                         (q) => Padding(

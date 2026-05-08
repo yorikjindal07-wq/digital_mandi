@@ -14,8 +14,10 @@ ios/Pods/
 __pycache__/
 *.pyc
 backend/.env
+backend/.venv/
 backend/*.db
 backend/data/
+plant_disease_app/secrets.json
 
 # ML models (CRITICAL)
 *.pt

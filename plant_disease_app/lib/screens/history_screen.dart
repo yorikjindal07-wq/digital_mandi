@@ -46,7 +46,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n   = context.watch<AppProvider>().l10n;
+    final l10n = context.watch<AppProvider>().l10n;
     final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
@@ -55,7 +55,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
         actions: [
           if (_reports != null && _reports!.isNotEmpty)
             Chip(
-              label: Text('${_reports!.length} reports'),
+              label: Text('${_reports!.length} ${l10n['reports_suffix']}'),
               backgroundColor: scheme.primary.withValues(alpha: 0.1),
             ),
           const SizedBox(width: 8),
@@ -64,21 +64,21 @@ class _HistoryScreenState extends State<HistoryScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _reports == null || _reports!.isEmpty
-              ? _EmptyState(l10n: l10n)
-              : RefreshIndicator(
-                  onRefresh: _loadReports,
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(12),
-                    itemCount: _reports!.length,
-                    itemBuilder: (context, index) {
-                      final report = _reports![index];
-                      return _ReportCard(
-                        report:   report,
-                        onDelete: () => _deleteReport(report),
-                      );
-                    },
-                  ),
-                ),
+          ? _EmptyState(l10n: l10n)
+          : RefreshIndicator(
+              onRefresh: _loadReports,
+              child: ListView.builder(
+                padding: const EdgeInsets.all(12),
+                itemCount: _reports!.length,
+                itemBuilder: (context, index) {
+                  final report = _reports![index];
+                  return _ReportCard(
+                    report: report,
+                    onDelete: () => _deleteReport(report),
+                  );
+                },
+              ),
+            ),
     );
   }
 }
@@ -86,30 +86,33 @@ class _HistoryScreenState extends State<HistoryScreen> {
 class _ReportCard extends StatelessWidget {
   const _ReportCard({required this.report, required this.onDelete});
   final DiseaseReport report;
-  final VoidCallback  onDelete;
+  final VoidCallback onDelete;
 
   Color _colorForDisease(String disease) {
     if (disease == 'healthy') return Colors.green;
     if (disease.contains('blight')) return Colors.red;
-    if (disease.contains('mold'))   return Colors.orange;
+    if (disease.contains('mold')) return Colors.orange;
     return Colors.blueGrey;
   }
 
   @override
   Widget build(BuildContext context) {
     final color = _colorForDisease(report.disease);
+    final l10n = context.watch<AppProvider>().l10n;
     final scheme = Theme.of(context).colorScheme;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: report.imagePath != null && File(report.imagePath!).existsSync()
+        leading:
+            report.imagePath != null && File(report.imagePath!).existsSync()
             ? ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: Image.file(
                   File(report.imagePath!),
-                  width: 56, height: 56,
+                  width: 56,
+                  height: 56,
                   fit: BoxFit.cover,
                 ),
               )
@@ -129,7 +132,7 @@ class _ReportCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Crop: ${report.crop}  •  ${(report.confidence * 100).toStringAsFixed(1)}% confidence',
+              '${l10n['crop_short_label']}: ${_localizedHistoryCropName(l10n, report.crop)}  •  ${(report.confidence * 100).toStringAsFixed(1)}% ${l10n['confidence_suffix']}',
               style: const TextStyle(fontSize: 12),
             ),
             const SizedBox(height: 2),
@@ -157,19 +160,22 @@ class _ReportCard extends StatelessWidget {
               onPressed: () => showDialog(
                 context: context,
                 builder: (_) => AlertDialog(
-                  title: const Text('Delete Report'),
-                  content: const Text('Remove this report from your history?'),
+                  title: Text(l10n['delete_report_title']),
+                  content: Text(l10n['delete_report_message']),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.pop(context),
-                      child: const Text('Cancel'),
+                      child: Text(l10n['cancel']),
                     ),
                     TextButton(
                       onPressed: () {
                         Navigator.pop(context);
                         onDelete();
                       },
-                      child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                      child: Text(
+                        l10n['delete'],
+                        style: const TextStyle(color: Colors.red),
+                      ),
                     ),
                   ],
                 ),
@@ -199,16 +205,33 @@ class _EmptyState extends StatelessWidget {
           const Text('📋', style: TextStyle(fontSize: 64)),
           const SizedBox(height: 16),
           Text(
-            'No reports yet',
+            l10n['no_reports_title'],
             style: Theme.of(context).textTheme.titleLarge,
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Scan a plant leaf to create your first report',
+          Text(
+            l10n['no_reports_subtitle'],
             style: TextStyle(color: Colors.grey),
           ),
         ],
       ),
     );
+  }
+}
+
+String _localizedHistoryCropName(AppL10n l10n, String crop) {
+  switch (crop) {
+    case 'tomato':
+      return l10n['crop_name_tomato'];
+    case 'potato':
+      return l10n['crop_name_potato'];
+    case 'wheat':
+      return l10n['crop_name_wheat'];
+    case 'rice':
+      return l10n['crop_name_rice'];
+    case 'cotton':
+      return l10n['crop_name_cotton'];
+    default:
+      return crop;
   }
 }
