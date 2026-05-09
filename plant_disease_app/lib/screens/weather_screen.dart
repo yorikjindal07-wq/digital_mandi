@@ -135,22 +135,22 @@ class _WeatherScreenState extends State<WeatherScreen> {
     });
 
     try {
-      final current = await WeatherService.getWeather(
-        liveWeatherCity,
-        languageCode: languageCode,
-      );
-      final forecast = await WeatherService.instance.getThreeDayForecast(
+      final summary = await WeatherService.instance.getWeatherSummary(
         liveWeatherCity,
         languageCode: languageCode,
       );
 
+      if (!mounted) return;
+
       setState(() {
-        _liveWeather = current;
-        _threeDayForecast = forecast;
+        _liveWeather = summary.current;
+        _threeDayForecast = summary.threeDayForecast;
         _error = null;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
+
       setState(() {
         _threeDayForecast = const [];
         _error = e.toString();

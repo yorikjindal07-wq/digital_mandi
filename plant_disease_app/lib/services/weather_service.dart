@@ -7,6 +7,16 @@ import '../core/constants.dart';
 import '../data/local_db.dart' as local_db;
 import '../models/models.dart';
 
+class WeatherSummaryData {
+  const WeatherSummaryData({
+    required this.current,
+    required this.threeDayForecast,
+  });
+
+  final WeatherData current;
+  final List<WeatherData> threeDayForecast;
+}
+
 class WeatherService {
   WeatherService._();
 
@@ -21,6 +31,62 @@ class WeatherService {
     String languageCode = 'en',
   }) {
     return instance.getWeatherWithFallback(city, languageCode: languageCode);
+  }
+
+  Future<WeatherSummaryData> getWeatherSummary(
+    String city, {
+    String languageCode = 'en',
+  }) async {
+    if (city.trim().isEmpty) {
+      throw ValidationException(message: 'City name cannot be empty');
+    }
+
+    final backendSummaryUri = AppConstants.backendUri(
+      '/api/v1/weather/summary',
+      queryParameters: {'city': city, 'language': languageCode},
+    );
+
+    if (backendSummaryUri == null) {
+      return _getWeatherSummaryLegacy(city, languageCode: languageCode);
+    }
+
+    try {
+      final response = await _client
+          .get(backendSummaryUri)
+          .timeout(AppConstants.weatherApiTimeout);
+
+      if (response.statusCode == 404) {
+        debugPrint('Weather summary endpoint not deployed yet. Falling back.');
+        return _getWeatherSummaryLegacy(city, languageCode: languageCode);
+      }
+
+      if (response.statusCode != 200) {
+        throw NetworkException(
+          message: 'Failed to fetch weather summary. Status: ${response.statusCode}',
+        );
+      }
+
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final currentPayload =
+          data['current'] as Map<String, dynamic>? ?? const {};
+      final forecastPayload =
+          data['forecast'] as Map<String, dynamic>? ?? const {};
+      final current = _parseWeatherResponse(currentPayload, fallbackCity: city);
+      final forecast = _parseForecastResponse(
+        forecastPayload,
+        fallbackCity: current.city,
+      );
+
+      await _cacheWeatherData(city, current);
+
+      return WeatherSummaryData(
+        current: current,
+        threeDayForecast: _compressForecastToThreeDays(forecast),
+      );
+    } catch (e) {
+      debugPrint('Weather summary fetch failed for $city: $e');
+      return _getWeatherSummaryLegacy(city, languageCode: languageCode);
+    }
   }
 
   Future<WeatherData> getWeatherByCity(
@@ -174,17 +240,7 @@ class WeatherService {
     }
 
     final data = jsonDecode(response.body) as Map<String, dynamic>;
-    final fallbackCity =
-        (data['city'] as Map<String, dynamic>?)?['name'] as String? ?? city;
-    final forecasts = data['list'] as List<dynamic>? ?? const [];
-
-    return forecasts
-        .whereType<Map<String, dynamic>>()
-        .map(
-          (forecast) =>
-              _parseWeatherResponse(forecast, fallbackCity: fallbackCity),
-        )
-        .toList();
+    return _parseForecastResponse(data, fallbackCity: city);
   }
 
   Future<List<WeatherData>> getThreeDayForecast(
@@ -192,6 +248,43 @@ class WeatherService {
     String languageCode = 'en',
   }) async {
     final forecast = await getForecast(city, languageCode: languageCode);
+    return _compressForecastToThreeDays(forecast);
+  }
+
+  WeatherData _pickRepresentativeForecast(List<WeatherData> items) {
+    WeatherData representative = items.first;
+    var bestDistance = 24;
+
+    for (final item in items) {
+      final distance = (item.timestamp.hour - 12).abs();
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        representative = item;
+      }
+    }
+
+    return representative;
+  }
+
+  List<WeatherData> _parseForecastResponse(
+    Map<String, dynamic> data, {
+    required String fallbackCity,
+  }) {
+    final payloadCity =
+        (data['city'] as Map<String, dynamic>?)?['name'] as String?;
+    final resolvedCity = payloadCity ?? fallbackCity;
+    final forecasts = data['list'] as List<dynamic>? ?? const [];
+
+    return forecasts
+        .whereType<Map<String, dynamic>>()
+        .map(
+          (forecast) =>
+              _parseWeatherResponse(forecast, fallbackCity: resolvedCity),
+        )
+        .toList();
+  }
+
+  List<WeatherData> _compressForecastToThreeDays(List<WeatherData> forecast) {
     if (forecast.isEmpty) return const [];
 
     final now = DateTime.now();
@@ -242,21 +335,6 @@ class WeatherService {
         windSpeed: avgWind,
       );
     }).toList();
-  }
-
-  WeatherData _pickRepresentativeForecast(List<WeatherData> items) {
-    WeatherData representative = items.first;
-    var bestDistance = 24;
-
-    for (final item in items) {
-      final distance = (item.timestamp.hour - 12).abs();
-      if (distance < bestDistance) {
-        bestDistance = distance;
-        representative = item;
-      }
-    }
-
-    return representative;
   }
 
   WeatherData _parseWeatherResponse(
@@ -373,6 +451,26 @@ class WeatherService {
     } catch (e) {
       debugPrint('Falling back to cached weather for $city: $e');
       return _getCachedWeather(city);
+    }
+  }
+
+  Future<WeatherSummaryData> _getWeatherSummaryLegacy(
+    String city, {
+    required String languageCode,
+  }) async {
+    final currentFuture = getWeatherWithFallback(
+      city,
+      languageCode: languageCode,
+    );
+    final forecastFuture = getThreeDayForecast(city, languageCode: languageCode);
+
+    final current = await currentFuture;
+    try {
+      final forecast = await forecastFuture;
+      return WeatherSummaryData(current: current, threeDayForecast: forecast);
+    } catch (e) {
+      debugPrint('Legacy forecast fetch failed for $city: $e');
+      return WeatherSummaryData(current: current, threeDayForecast: const []);
     }
   }
 
