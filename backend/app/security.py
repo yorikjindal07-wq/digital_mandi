@@ -31,6 +31,7 @@ RATE_LIMIT_WRITE_PER_MINUTE = int(os.getenv("RATE_LIMIT_WRITE_PER_MINUTE", "30")
 RATE_LIMIT_CHAT_PER_MINUTE = int(os.getenv("RATE_LIMIT_CHAT_PER_MINUTE", "20"))
 RATE_LIMIT_AUTH_PER_MINUTE = int(os.getenv("RATE_LIMIT_AUTH_PER_MINUTE", "10"))
 RATE_LIMIT_WINDOW_SECONDS = 60
+PASSWORD_MAX_BYTES = 72
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 http_bearer = HTTPBearer(auto_error=False)
@@ -145,11 +146,22 @@ def normalize_email(email: str) -> str:
     return email.strip().lower()
 
 
+def validate_password_length(password: str) -> None:
+    password_bytes = password.encode("utf-8")
+    if len(password_bytes) > PASSWORD_MAX_BYTES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Password too long. Maximum {PASSWORD_MAX_BYTES} bytes.",
+        )
+
+
 def hash_password(password: str) -> str:
+    validate_password_length(password)
     return pwd_context.hash(password)
 
 
 def verify_password(password: str, password_hash: str) -> bool:
+    validate_password_length(password)
     return pwd_context.verify(password, password_hash)
 
 

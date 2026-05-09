@@ -1,13 +1,14 @@
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy.orm import Session
 
 from app.api.db import models as db_models
 from app.api.db.database import get_db
 from app.security import (
     PASSWORD_MIN_LENGTH,
+    PASSWORD_MAX_BYTES,
     authenticate_user,
     create_access_token,
     create_refresh_token,
@@ -15,14 +16,25 @@ from app.security import (
     get_current_user,
     hash_password,
     normalize_email,
+    validate_password_length,
 )
 
 router = APIRouter()
 
 
 class AuthRequest(BaseModel):
-    email: str = Field(..., min_length=5, max_length=120)
-    password: str = Field(..., min_length=PASSWORD_MIN_LENGTH, max_length=128)
+    email: EmailStr
+    password: str
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, value: str) -> str:
+        if len(value) < PASSWORD_MIN_LENGTH:
+            raise ValueError(
+                f"Password must be at least {PASSWORD_MIN_LENGTH} characters",
+            )
+        validate_password_length(value)
+        return value
 
 
 class RefreshRequest(BaseModel):
@@ -44,18 +56,6 @@ class TokenResponse(BaseModel):
     access_token_expires_at: datetime
     refresh_token_expires_at: datetime
     user: UserResponse
-
-
-def _is_plausible_email(email: str) -> bool:
-    normalized = normalize_email(email)
-    local, separator, domain = normalized.partition("@")
-    return bool(
-        separator
-        and local
-        and "." in domain
-        and not normalized.startswith("@")
-        and not normalized.endswith("@")
-    )
 
 
 def _build_user_response(user: db_models.User) -> UserResponse:
@@ -83,9 +83,6 @@ def _issue_tokens(user: db_models.User) -> TokenResponse:
 @router.post("/auth/register", response_model=TokenResponse, status_code=201)
 def register(req: AuthRequest, db: Session = Depends(get_db)) -> TokenResponse:
     email = normalize_email(req.email)
-    if not _is_plausible_email(email):
-        raise HTTPException(status_code=400, detail="Enter a valid email address.")
-
     existing_user = (
         db.query(db_models.User)
         .filter(db_models.User.email == email)
