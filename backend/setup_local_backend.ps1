@@ -1,6 +1,7 @@
 param(
     [switch]$RecreateVenv,
-    [switch]$RunTests = $true
+    [switch]$RunTests = $true,
+    [switch]$MigrateToPostgres
 )
 
 $ErrorActionPreference = "Stop"
@@ -71,6 +72,11 @@ Write-Host "Installing backend dependencies..."
 if ($RunTests) {
     Write-Host "Running backend tests..."
     & $pythonExe -m unittest discover -s tests -v
+}
+
+if ($MigrateToPostgres) {
+    Write-Host "Running SQLite to PostgreSQL migration..."
+    & $pythonExe migrate_sqlite_to_postgres.py
 }
 
 Write-Host "Backend local setup is complete."

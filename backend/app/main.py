@@ -18,7 +18,13 @@ except ImportError:
 from app.api.auth import router as auth_router
 from app.api.chat import router as chat_router
 from app.api.db import models as db_models
-from app.api.db.database import DATABASE_URL, engine
+from app.api.db.database import (
+    DATABASE_URL,
+    engine,
+    get_database_backend_name,
+    get_redacted_database_url,
+    verify_database_connection,
+)
 from app.api.report import router as report_router
 from app.api.sync import router as sync_router
 from app.api.treatments import router as treatments_router
@@ -61,10 +67,16 @@ def _log_startup_security_warnings() -> None:
         logger.warning(
             "Backend is using SQLite. This is fine for local development, but Render production should use DATABASE_URL from Render Postgres.",
         )
+    logger.info(
+        "Configured database backend=%s url=%s",
+        get_database_backend_name(),
+        get_redacted_database_url(),
+    )
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    verify_database_connection()
     db_models.Base.metadata.create_all(bind=engine)
     if should_refresh():
         asyncio.create_task(refresh_treatments_json())

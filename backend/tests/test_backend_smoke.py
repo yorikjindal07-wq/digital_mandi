@@ -299,6 +299,10 @@ class BackendSmokeTests(unittest.TestCase):
         self.assertEqual(response.json()["en"]["name"], "Early Blight")
         self.assertEqual(response.json()["en"]["source"], "built-in")
 
+    def test_database_connection_uses_sqlite_in_smoke_tests(self) -> None:
+        self.assertEqual(self.database.get_database_backend_name(), "sqlite")
+        self.assertTrue(self.database.get_redacted_database_url().startswith("sqlite:///"))
+
 
 if __name__ == "__main__":
     unittest.main()

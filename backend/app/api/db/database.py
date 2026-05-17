@@ -2,7 +2,7 @@ from collections.abc import Generator
 import os
 from pathlib import Path
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
 
 
@@ -25,6 +25,8 @@ def _build_database_url() -> str:
 
 DATABASE_URL = _build_database_url()
 CONNECT_ARGS = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+IS_SQLITE = DATABASE_URL.startswith("sqlite")
+IS_POSTGRES = DATABASE_URL.startswith("postgresql")
 
 engine = create_engine(
     DATABASE_URL,
@@ -45,3 +47,33 @@ def get_db() -> Generator[Session, None, None]:
         yield db
     finally:
         db.close()
+
+
+def get_database_backend_name() -> str:
+    if IS_POSTGRES:
+        return "postgresql"
+    if IS_SQLITE:
+        return "sqlite"
+    return "unknown"
+
+
+def get_redacted_database_url() -> str:
+    if IS_SQLITE:
+        return DATABASE_URL
+
+    prefix, separator, remainder = DATABASE_URL.partition("://")
+    if not separator:
+        return DATABASE_URL
+
+    credentials, at_sign, host_part = remainder.partition("@")
+    if not at_sign:
+        return f"{prefix}://{host_part}"
+
+    username, colon, _password = credentials.partition(":")
+    safe_credentials = f"{username}:***" if colon else username
+    return f"{prefix}://{safe_credentials}@{host_part}"
+
+
+def verify_database_connection() -> None:
+    with engine.connect() as connection:
+        connection.execute(text("SELECT 1"))

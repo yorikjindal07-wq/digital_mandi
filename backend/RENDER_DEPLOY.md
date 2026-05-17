@@ -26,6 +26,20 @@ connection string into the web service as `DATABASE_URL`.
 - App env var: `DATABASE_URL`
 - SQLite should now be treated as local-development fallback only
 
+### Migrating existing SQLite data into Render Postgres
+
+If your older backend data is still in `backend/data/digital_mandi.db`, migrate it
+once after linking the Render database:
+
+```bash
+cd backend
+python migrate_sqlite_to_postgres.py
+```
+
+The script reads from local SQLite and writes into the PostgreSQL database
+pointed to by `DATABASE_URL`. It skips rows that already exist by primary key,
+so it is safe to rerun if the first attempt is interrupted.
+
 ### Environment variables
 
 - `HUGGING_FACE_API_KEY`
@@ -66,6 +80,8 @@ connection string into the web service as `DATABASE_URL`.
 3. Restrict `CORS_ALLOW_ORIGINS` if you add any web frontend.
 4. Confirm the web service has `DATABASE_URL` linked from `digital-mandi-postgres`.
 5. Treat SQLite as local-only fallback, not production storage.
+6. If you have existing local records, run `python migrate_sqlite_to_postgres.py`
+   before you start relying on the new Render database.
 
 ### Local auth hashing note
 
