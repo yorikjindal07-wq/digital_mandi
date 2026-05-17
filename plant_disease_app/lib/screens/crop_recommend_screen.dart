@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -179,6 +180,22 @@ class _CropRecommendScreenState extends State<CropRecommendScreen> {
   final TextEditingController _copperController = TextEditingController(
     text: '0.4',
   );
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_warmUpModels());
+  }
+
+  Future<void> _warmUpModels() async {
+    if (MLService.instance.isLoaded) return;
+
+    try {
+      await MLService.instance.loadModels();
+    } catch (e) {
+      debugPrint('Crop recommendation ML warm-up failed: $e');
+    }
+  }
   final TextEditingController _boronController = TextEditingController(
     text: '0.7',
   );

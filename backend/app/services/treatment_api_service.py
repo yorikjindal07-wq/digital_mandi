@@ -18,18 +18,38 @@ import httpx
 import asyncio
 from pathlib import Path
 from datetime import datetime, timedelta
-from functools import lru_cache
 
 logger = logging.getLogger(__name__)
 
 # ── API configuration ─────────────────────────
-CABI_API_KEY  = os.getenv("CABI_API_KEY",  "")    # register at cabi.org
-EPPO_API_KEY  = os.getenv("EPPO_API_KEY",  "")    # register at eppo.int
-OWM_API_KEY   = os.getenv("OWM_API_KEY",   "")    # openweathermap.org (free)
-AGRO_API_KEY  = os.getenv("AGRO_API_KEY",  "")    # agromonitoring.com (free)
+CABI_API_KEY = os.getenv("CABI_API_KEY", "")  # register at cabi.org
 
-CACHE_PATH    = Path("../plant_disease_app/assets/data/treatments.json")
+REPO_ROOT = Path(__file__).resolve().parents[3]
+CACHE_PATH = REPO_ROOT / "plant_disease_app" / "assets" / "data" / "treatments.json"
 CACHE_TTL_DAYS = 7   # Refresh treatments weekly
+
+_logged_missing_cabi_key = False
+_logged_eppo_unavailable = False
+
+
+def _log_missing_cabi_key_once() -> None:
+    global _logged_missing_cabi_key
+    if _logged_missing_cabi_key:
+        return
+    logger.warning(
+        "CABI_API_KEY not set; skipping live CABI treatment sync and using fallback data.",
+    )
+    _logged_missing_cabi_key = True
+
+
+def _log_eppo_unavailable_once() -> None:
+    global _logged_eppo_unavailable
+    if _logged_eppo_unavailable:
+        return
+    logger.warning(
+        "EPPO live treatment sync is disabled because the configured datasheet endpoint returns 404 responses. Using fallback data instead.",
+    )
+    _logged_eppo_unavailable = True
 
 
 # ─────────────────────────────────────────────
@@ -282,6 +302,95 @@ def load_treatments() -> dict:
     if CACHE_PATH.exists():
         with open(CACHE_PATH, encoding="utf-8") as f:
             return json.load(f)
+    return _hardcoded_treatments()
+
+
+# Runtime overrides for deployment-safe treatment sync behavior.
+REPO_ROOT = Path(__file__).resolve().parents[3]
+CACHE_PATH = REPO_ROOT / "plant_disease_app" / "assets" / "data" / "treatments.json"
+_logged_missing_cabi_key = False
+_logged_eppo_unavailable = False
+
+
+def _log_missing_cabi_key_once() -> None:
+    global _logged_missing_cabi_key
+    if _logged_missing_cabi_key:
+        return
+    logger.warning(
+        "CABI_API_KEY not set; skipping live CABI treatment sync and using fallback data.",
+    )
+    _logged_missing_cabi_key = True
+
+
+def _log_eppo_unavailable_once() -> None:
+    global _logged_eppo_unavailable
+    if _logged_eppo_unavailable:
+        return
+    logger.warning(
+        "EPPO live treatment sync is disabled because the configured datasheet endpoint returns 404 responses. Using fallback data instead.",
+    )
+    _logged_eppo_unavailable = True
+
+
+async def fetch_cabi_treatment(disease_key: str) -> dict | None:
+    if not CABI_API_KEY:
+        _log_missing_cabi_key_once()
+        return None
+
+    query = DISEASE_QUERIES.get(disease_key, {})
+    if not query.get("scientific"):
+        return None
+
+    url = "https://api.cabi.org/cpc/datasheet"
+    headers = {
+        "Authorization": f"Bearer {CABI_API_KEY}",
+        "Accept": "application/json",
+    }
+    params = {
+        "q": query["scientific"],
+        "type": "pest",
+        "fields": "management,chemical_control,biological_control,symptoms",
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(url, headers=headers, params=params)
+            resp.raise_for_status()
+            data = resp.json()
+
+        if not data.get("results"):
+            return None
+
+        result = data["results"][0]
+        return {
+            "source": "CABI Crop Protection Compendium",
+            "disease_name": result.get("common_name", query["common"]),
+            "pathogen": result.get("scientific_name", query["scientific"]),
+            "symptoms": result.get("symptoms", ""),
+            "chemical_treatment": result.get("chemical_control", ""),
+            "biological_treatment": result.get("biological_control", ""),
+            "cultural_management": result.get("management", ""),
+            "fetched_at": datetime.utcnow().isoformat(),
+        }
+    except Exception as exc:
+        logger.error("CABI API error for %s: %s", disease_key, exc)
+        return None
+
+
+async def fetch_eppo_treatment(disease_key: str) -> dict | None:
+    if disease_key not in DISEASE_QUERIES:
+        return None
+    _log_eppo_unavailable_once()
+    return None
+
+
+def load_treatments() -> dict:
+    if CACHE_PATH.exists():
+        try:
+            with open(CACHE_PATH, encoding="utf-8") as f:
+                return json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            logger.warning("Failed to read cached treatments from %s: %s", CACHE_PATH, exc)
     return _hardcoded_treatments()
 
 

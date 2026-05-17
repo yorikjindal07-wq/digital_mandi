@@ -4,6 +4,8 @@
 // before the first frame renders.
 // ─────────────────────────────────────────────
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -15,7 +17,6 @@ import 'providers/auth_provider.dart';
 import 'providers/app_provider.dart';
 import 'screens/home_screen.dart';
 import 'services/auth_service.dart';
-import 'services/ml_service.dart';
 import 'services/chatbot_service.dart';
 import 'services/sync_service.dart';
 import 'services/voice_services.dart';
@@ -47,27 +48,40 @@ void main() async {
     );
   }
 
-  // Init ML models — non-fatal: app works in offline mode without models
+  runApp(const DigitalMandiApp());
+
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    unawaited(_warmUpOptionalServices());
+  });
+}
+
+Future<void> _warmUpOptionalServices() async {
   try {
-    await MLService.instance.loadModels();
+    await ChatbotService.instance.initialize();
   } catch (e) {
-    debugPrint('⚠️  ML models not loaded (placeholder files?): $e');
-    // App continues — camera screen will show a message if model is missing
+    debugPrint('⚠️  Chatbot warm-up failed: $e');
   }
 
-  // Init chatbot knowledge base
-  await ChatbotService.instance.initialize();
+  try {
+    await Future<void>.delayed(const Duration(milliseconds: 900));
+    await TTSService.instance.initialize();
+  } catch (e) {
+    debugPrint('⚠️  TTS warm-up failed: $e');
+  }
 
-  // Init voice services
-  await TTSService.instance.initialize();
+  try {
+    await Future<void>.delayed(const Duration(milliseconds: 250));
+  } catch (e) {
+    debugPrint('⚠️  ML models not loaded (placeholder files?): $e');
+  }
 
-  // Restore any persisted secure auth session before sync starts.
-  await AuthService.instance.initialize();
+  try {
+    await AuthService.instance.initialize();
+  } catch (e) {
+    debugPrint('⚠️  Auth warm-up failed: $e');
+  }
 
-  // Start background sync listener
   SyncService.instance.startListening();
-
-  runApp(const DigitalMandiApp());
 }
 
 class DigitalMandiApp extends StatelessWidget {

@@ -38,6 +38,7 @@ connection string into the web service as `DATABASE_URL`.
 - `ACCESS_TOKEN_EXPIRE_MINUTES`
 - `REFRESH_TOKEN_EXPIRE_DAYS`
 - `PASSWORD_MIN_LENGTH`
+- `BCRYPT_ROUNDS`
 - `ADMIN_API_TOKEN`
 - `RATE_LIMIT_GENERAL_PER_MINUTE`
 - `RATE_LIMIT_AUTH_PER_MINUTE`
@@ -52,6 +53,7 @@ connection string into the web service as `DATABASE_URL`.
 - `ACCESS_TOKEN_EXPIRE_MINUTES`: `60`
 - `REFRESH_TOKEN_EXPIRE_DAYS`: `14`
 - `PASSWORD_MIN_LENGTH`: `8`
+- `BCRYPT_ROUNDS`: `12`
 - `RATE_LIMIT_GENERAL_PER_MINUTE`: `120`
 - `RATE_LIMIT_AUTH_PER_MINUTE`: `10`
 - `RATE_LIMIT_CHAT_PER_MINUTE`: `20`
@@ -64,6 +66,12 @@ connection string into the web service as `DATABASE_URL`.
 3. Restrict `CORS_ALLOW_ORIGINS` if you add any web frontend.
 4. Confirm the web service has `DATABASE_URL` linked from `digital-mandi-postgres`.
 5. Treat SQLite as local-only fallback, not production storage.
+
+### Local auth hashing note
+
+The backend now hashes passwords directly with the `bcrypt` package instead of
+going through `passlib`. If your local virtualenv was created before this
+change, rebuild it so the installed packages match `requirements.txt`.
 
 ### Important
 

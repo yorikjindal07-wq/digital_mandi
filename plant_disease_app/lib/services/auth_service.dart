@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -114,6 +115,8 @@ class AuthService {
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
   );
   static const String _sessionStorageKey = 'auth_session';
+  static const int _maxAuthAttempts = 2;
+  static const Duration _authRetryDelay = Duration(seconds: 2);
 
   final http.Client _client = http.Client();
 
@@ -219,16 +222,10 @@ class AuthService {
       );
     }
 
-    final response = await _client
-        .post(
-          authUri,
-          headers: const {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
-          body: jsonEncode({'email': email.trim(), 'password': password}),
-        )
-        .timeout(AppConstants.apiTimeout);
+    final response = await _postJsonWithRetry(
+      authUri,
+      {'email': email.trim(), 'password': password},
+    );
 
     return _handleAuthResponse(response);
   }
@@ -241,22 +238,70 @@ class AuthService {
     }
 
     try {
-      final response = await _client
-          .post(
-            refreshUri,
-            headers: const {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-            },
-            body: jsonEncode({'refresh_token': current.refreshToken}),
-          )
-          .timeout(AppConstants.apiTimeout);
+      final response = await _postJsonWithRetry(refreshUri, {
+        'refresh_token': current.refreshToken,
+      });
       return await _handleAuthResponse(response);
+    } on AuthException catch (error) {
+      debugPrint('Token refresh failed: $error');
+      await logout();
+      return null;
     } catch (error) {
       debugPrint('Token refresh failed: $error');
       await logout();
       return null;
     }
+  }
+
+  Future<http.Response> _postJsonWithRetry(
+    Uri uri,
+    Map<String, dynamic> payload,
+  ) async {
+    Object? lastError;
+
+    for (var attempt = 1; attempt <= _maxAuthAttempts; attempt++) {
+      try {
+        final response = await _client
+            .post(
+              uri,
+              headers: const {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+              },
+              body: jsonEncode(payload),
+            )
+            .timeout(AppConstants.apiTimeout);
+
+        if (response.statusCode >= 500 && attempt < _maxAuthAttempts) {
+          await Future<void>.delayed(_authRetryDelay);
+          continue;
+        }
+
+        return response;
+      } on TimeoutException catch (error) {
+        lastError = error;
+        if (attempt >= _maxAuthAttempts) {
+          throw AuthException(
+            'Secure sign-in timed out. If the backend is waking up, wait a few seconds and try again.',
+          );
+        }
+        await Future<void>.delayed(_authRetryDelay);
+      } catch (error) {
+        lastError = error;
+        if (attempt >= _maxAuthAttempts) {
+          break;
+        }
+        await Future<void>.delayed(_authRetryDelay);
+      }
+    }
+
+    if (lastError != null) {
+      throw AuthException(
+        'Could not reach the secure backend. Check your internet connection and try again.',
+      );
+    }
+
+    throw AuthException('Authentication request failed.');
   }
 
   Future<AuthSession> _handleAuthResponse(http.Response response) async {
@@ -275,6 +320,12 @@ class AuthService {
     final detail = data['detail'];
     if (detail is String && detail.trim().isNotEmpty) {
       throw AuthException(detail.trim());
+    }
+
+    if (response.statusCode >= 500) {
+      throw AuthException(
+        'Secure backend is temporarily unavailable. Please try again in a few seconds.',
+      );
     }
 
     throw AuthException(

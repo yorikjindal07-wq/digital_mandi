@@ -7,10 +7,10 @@ from collections import deque
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
+import bcrypt
 from fastapi import Depends, Header, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
 from app.api.db import models as db_models
@@ -32,8 +32,7 @@ RATE_LIMIT_CHAT_PER_MINUTE = int(os.getenv("RATE_LIMIT_CHAT_PER_MINUTE", "20"))
 RATE_LIMIT_AUTH_PER_MINUTE = int(os.getenv("RATE_LIMIT_AUTH_PER_MINUTE", "10"))
 RATE_LIMIT_WINDOW_SECONDS = 60
 PASSWORD_MAX_BYTES = 72
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+BCRYPT_ROUNDS = int(os.getenv("BCRYPT_ROUNDS", "12"))
 http_bearer = HTTPBearer(auto_error=False)
 
 
@@ -157,12 +156,24 @@ def validate_password_length(password: str) -> None:
 
 def hash_password(password: str) -> str:
     validate_password_length(password)
-    return pwd_context.hash(password)
+    password_bytes = password.encode("utf-8")
+    password_hash = bcrypt.hashpw(
+        password_bytes,
+        bcrypt.gensalt(rounds=BCRYPT_ROUNDS),
+    )
+    return password_hash.decode("utf-8")
 
 
 def verify_password(password: str, password_hash: str) -> bool:
     validate_password_length(password)
-    return pwd_context.verify(password, password_hash)
+    try:
+        return bcrypt.checkpw(
+            password.encode("utf-8"),
+            password_hash.encode("utf-8"),
+        )
+    except ValueError:
+        logger.warning("Invalid bcrypt hash encountered while verifying a password.")
+        return False
 
 
 def _ensure_jwt_configured() -> None:

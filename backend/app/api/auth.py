@@ -8,7 +8,6 @@ from app.api.db import models as db_models
 from app.api.db.database import get_db
 from app.security import (
     PASSWORD_MIN_LENGTH,
-    PASSWORD_MAX_BYTES,
     authenticate_user,
     create_access_token,
     create_refresh_token,

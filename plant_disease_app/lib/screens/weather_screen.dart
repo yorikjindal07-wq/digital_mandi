@@ -520,13 +520,33 @@ class _WeatherScreenState extends State<WeatherScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             DropdownButtonFormField<String>(
+              isExpanded: true,
               initialValue: _citySuggestions.contains(_selectedCity)
                   ? _selectedCity
                   : null,
               decoration: InputDecoration(labelText: l10n['suggested_city']),
+              selectedItemBuilder: (context) => _citySuggestions
+                  .map(
+                    (city) => Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        city,
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ),
+                  )
+                  .toList(),
               items: _citySuggestions
                   .map(
-                    (city) => DropdownMenuItem(value: city, child: Text(city)),
+                    (city) => DropdownMenuItem(
+                      value: city,
+                      child: Text(
+                        city,
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ),
                   )
                   .toList(),
               onChanged: (value) {

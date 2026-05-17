@@ -1,13 +1,12 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../core/theme.dart';
 import '../models/models.dart';
 import '../providers/app_provider.dart';
+import '../services/treatment_service.dart';
 import '../services/voice_services.dart';
 
 class ResultScreen extends StatefulWidget {
@@ -28,7 +27,7 @@ class _ResultScreenState extends State<ResultScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _progressCtrl;
   late final Animation<double> _progressAnim;
-  Map<String, dynamic> _treatments = const {};
+  Map<String, dynamic> _diseaseTreatmentEntry = const {};
 
   @override
   void initState() {
@@ -54,14 +53,11 @@ class _ResultScreenState extends State<ResultScreen>
 
   Future<void> _loadTreatments() async {
     try {
-      final jsonString = await rootBundle.loadString(
-        'assets/data/treatments.json',
+      final decoded = await TreatmentService.instance.getDiseaseEntry(
+        widget.prediction.disease,
       );
-      final decoded = jsonDecode(jsonString);
       if (!mounted) return;
-      if (decoded is Map<String, dynamic>) {
-        setState(() => _treatments = decoded);
-      }
+      setState(() => _diseaseTreatmentEntry = decoded);
     } catch (_) {
       // Keep the screen usable with the fallback text already present
       // in PredictionModel.remedy.
@@ -84,24 +80,19 @@ class _ResultScreenState extends State<ResultScreen>
   }
 
   String _getTreatment(String lang) {
-    final disease = widget.prediction.disease;
-    final diseaseEntry = _treatments[disease];
-
-    if (diseaseEntry is Map<String, dynamic>) {
-      final localizedEntry = diseaseEntry[lang];
-      if (localizedEntry is Map<String, dynamic>) {
-        final treatment = localizedEntry['treatment'];
-        if (treatment is String && treatment.isNotEmpty) {
-          return treatment;
-        }
+    final localizedEntry = _diseaseTreatmentEntry[lang];
+    if (localizedEntry is Map<String, dynamic>) {
+      final treatment = localizedEntry['treatment'];
+      if (treatment is String && treatment.isNotEmpty) {
+        return treatment;
       }
+    }
 
-      final englishEntry = diseaseEntry['en'];
-      if (englishEntry is Map<String, dynamic>) {
-        final treatment = englishEntry['treatment'];
-        if (treatment is String && treatment.isNotEmpty) {
-          return treatment;
-        }
+    final englishEntry = _diseaseTreatmentEntry['en'];
+    if (englishEntry is Map<String, dynamic>) {
+      final treatment = englishEntry['treatment'];
+      if (treatment is String && treatment.isNotEmpty) {
+        return treatment;
       }
     }
 

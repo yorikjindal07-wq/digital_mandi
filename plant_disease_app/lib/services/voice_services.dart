@@ -202,15 +202,17 @@ class STTService extends ChangeNotifier {
   String _currentLanguage = 'en_IN';
   String _partialResult = '';
   String _finalResult = '';
+  String? _lastErrorCode;
 
   bool get isInitialized => _isInitialized;
   bool get isListening => _isListening;
   String get currentLanguage => _currentLanguage;
   String get partialResult => _partialResult;
   String get finalResult => _finalResult;
+  String? get lastErrorCode => _lastErrorCode;
 
   /// Initialize STT with microphone permission
-  Future<bool> initialize() async {
+  Future<bool> initialize({Function(String)? onError}) async {
     if (_isInitialized) return true;
 
     try {
@@ -219,6 +221,8 @@ class STTService extends ChangeNotifier {
       // Request microphone permission
       final status = await Permission.microphone.request();
       if (!status.isGranted) {
+        _lastErrorCode = 'permission_denied';
+        onError?.call(_lastErrorCode!);
         debugPrint('❌ Microphone permission denied');
         return false;
       }
@@ -226,8 +230,10 @@ class STTService extends ChangeNotifier {
       // Initialize speech recognition
       _isInitialized = await _speech.initialize(
         onError: (error) {
+          _lastErrorCode = _normalizeErrorCode(error.errorMsg);
           debugPrint('🎤 STT Error: ${error.errorMsg}');
           _isListening = false;
+          onError?.call(_lastErrorCode!);
           notifyListeners();
         },
         onStatus: (status) {
@@ -241,9 +247,18 @@ class STTService extends ChangeNotifier {
       );
 
       debugPrint('✅ STT initialized successfully');
+      if (!_isInitialized) {
+        _lastErrorCode = 'stt_unavailable';
+        onError?.call(_lastErrorCode!);
+        return false;
+      }
+
+      _lastErrorCode = null;
       return _isInitialized;
     } catch (e) {
       debugPrint('🔥 STT initialization error: $e');
+      _lastErrorCode = 'stt_init_failed';
+      onError?.call(_lastErrorCode!);
       return false;
     }
   }
@@ -254,12 +269,16 @@ class STTService extends ChangeNotifier {
     Function(String)? onPartialResult,
     Function()? onListeningStart,
     Function()? onListeningStop,
+    Function(String)? onError,
     String languageCode = 'en',
   }) async {
     try {
       if (!_isInitialized) {
-        final ok = await initialize();
-        if (!ok) return;
+        final ok = await initialize(onError: onError);
+        if (!ok) {
+          onError?.call(_lastErrorCode ?? 'stt_unavailable');
+          return;
+        }
       }
 
       if (_isListening) return;
@@ -270,6 +289,7 @@ class STTService extends ChangeNotifier {
       _isListening = true;
       _partialResult = '';
       _finalResult = '';
+      _lastErrorCode = null;
 
       onListeningStart?.call();
       notifyListeners();
@@ -305,7 +325,9 @@ class STTService extends ChangeNotifier {
       );
     } catch (e) {
       debugPrint('🔥 Start listening error: $e');
+      _lastErrorCode = 'stt_start_failed';
       _isListening = false;
+      onError?.call(_lastErrorCode!);
       notifyListeners();
     }
   }
@@ -360,6 +382,16 @@ class STTService extends ChangeNotifier {
       'te': 'te_IN',
     };
     return map[code] ?? 'en_IN';
+  }
+
+  static String _normalizeErrorCode(String rawCode) {
+    final code = rawCode.toLowerCase();
+    if (code.contains('no_match')) return 'error_no_match';
+    if (code.contains('permission')) return 'permission_denied';
+    if (code.contains('timeout')) return 'speech_timeout';
+    if (code.contains('network')) return 'network_error';
+    if (code.contains('audio')) return 'audio_error';
+    return 'stt_unavailable';
   }
 
   @override

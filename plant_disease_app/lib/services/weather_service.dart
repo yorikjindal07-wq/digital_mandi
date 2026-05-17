@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -22,6 +23,8 @@ class WeatherService {
 
   static final WeatherService instance = WeatherService._();
   static const int _cacheValidityMinutes = 30;
+  static const int _maxGetAttempts = 2;
+  static const Duration _retryDelay = Duration(seconds: 2);
 
   final http.Client _client = http.Client();
   bool _loggedMissingWeatherConfig = false;
@@ -51,9 +54,7 @@ class WeatherService {
     }
 
     try {
-      final response = await _client
-          .get(backendSummaryUri)
-          .timeout(AppConstants.weatherApiTimeout);
+      final response = await _getWithRetry(backendSummaryUri);
 
       if (response.statusCode == 404) {
         debugPrint('Weather summary endpoint not deployed yet. Falling back.');
@@ -109,18 +110,16 @@ class WeatherService {
     }
 
     try {
-      final response = await _client
-          .get(
-            useBackend
-                ? backendWeatherUri
-                : Uri.parse(
-                    AppConstants.getWeatherUrl(
-                      city,
-                      languageCode: languageCode,
-                    ),
-                  ),
-          )
-          .timeout(AppConstants.weatherApiTimeout);
+      final response = await _getWithRetry(
+        useBackend
+            ? backendWeatherUri
+            : Uri.parse(
+                AppConstants.getWeatherUrl(
+                  city,
+                  languageCode: languageCode,
+                ),
+              ),
+      );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -180,19 +179,17 @@ class WeatherService {
       );
     }
 
-    final response = await _client
-        .get(
-          useBackend
-              ? backendWeatherUri
-              : Uri.parse(
-                  AppConstants.getWeatherUrlByCoordinates(
-                    latitude,
-                    longitude,
-                    languageCode: languageCode,
-                  ),
-                ),
-        )
-        .timeout(AppConstants.weatherApiTimeout);
+    final response = await _getWithRetry(
+      useBackend
+          ? backendWeatherUri
+          : Uri.parse(
+              AppConstants.getWeatherUrlByCoordinates(
+                latitude,
+                longitude,
+                languageCode: languageCode,
+              ),
+            ),
+    );
 
     if (response.statusCode != 200) {
       throw NetworkException(
@@ -223,15 +220,13 @@ class WeatherService {
       return const [];
     }
 
-    final response = await _client
-        .get(
-          useBackend
-              ? backendForecastUri
-              : Uri.parse(
-                  AppConstants.getForecastUrl(city, languageCode: languageCode),
-                ),
-        )
-        .timeout(AppConstants.weatherApiTimeout);
+    final response = await _getWithRetry(
+      useBackend
+          ? backendForecastUri
+          : Uri.parse(
+              AppConstants.getForecastUrl(city, languageCode: languageCode),
+            ),
+    );
 
     if (response.statusCode != 200) {
       throw NetworkException(
@@ -472,6 +467,33 @@ class WeatherService {
       debugPrint('Legacy forecast fetch failed for $city: $e');
       return WeatherSummaryData(current: current, threeDayForecast: const []);
     }
+  }
+
+  Future<http.Response> _getWithRetry(Uri uri) async {
+    Object? lastError;
+
+    for (var attempt = 1; attempt <= _maxGetAttempts; attempt++) {
+      try {
+        final response = await _client
+            .get(uri)
+            .timeout(AppConstants.weatherApiTimeout);
+
+        if (response.statusCode >= 500 && attempt < _maxGetAttempts) {
+          await Future<void>.delayed(_retryDelay);
+          continue;
+        }
+
+        return response;
+      } catch (error) {
+        lastError = error;
+        if (attempt >= _maxGetAttempts) {
+          rethrow;
+        }
+        await Future<void>.delayed(_retryDelay);
+      }
+    }
+
+    throw lastError ?? StateError('Weather request failed without an error.');
   }
 
   void _logMissingWeatherConfig() {

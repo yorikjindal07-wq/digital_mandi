@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -25,6 +26,22 @@ class _CameraScreenState extends State<CameraScreen> {
   static const _crops = ['tomato', 'potato', 'wheat', 'rice', 'cotton'];
 
   final ImagePicker _picker = ImagePicker();
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_warmUpModels());
+  }
+
+  Future<void> _warmUpModels() async {
+    if (MLService.instance.isLoaded) return;
+
+    try {
+      await MLService.instance.loadModels();
+    } catch (e) {
+      debugPrint('Camera screen ML warm-up failed: $e');
+    }
+  }
 
   Future<void> _pickImage(ImageSource source) async {
     final picked = await _picker.pickImage(

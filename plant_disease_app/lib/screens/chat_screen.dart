@@ -72,6 +72,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
   // ── Send text message ─────────────────────────
   Future<void> _sendMessage() async {
+    if (_isTyping) return;
+
     final text = _controller.text.trim();
     if (text.isEmpty) return;
 
@@ -137,6 +139,7 @@ class _ChatScreenState extends State<ChatScreen> {
     }
 
     final lang = context.read<AppProvider>().languageCode;
+    await TTSService.instance.stop();
 
     await STTService.instance.startListening(
       onResult: (String text) {
@@ -147,8 +150,45 @@ class _ChatScreenState extends State<ChatScreen> {
       },
       onListeningStart: () => setState(() => _isListening = true),
       onListeningStop: () => setState(() => _isListening = false),
+      onError: (errorCode) {
+        if (!mounted) return;
+        setState(() => _isListening = false);
+        _showVoiceError(errorCode);
+      },
       languageCode: lang,
     );
+  }
+
+  void _showVoiceError(String errorCode) {
+    final lang = context.read<AppProvider>().languageCode;
+    final message = _voiceErrorMessage(lang, errorCode);
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  String _voiceErrorMessage(String lang, String errorCode) {
+    switch (errorCode) {
+      case 'error_no_match':
+      case 'speech_timeout':
+        return switch (lang) {
+          'hi' => 'आवाज साफ़ नहीं मिली। कृपया फसल या समस्या दोबारा बोलें।',
+          'pa' => 'ਆਵਾਜ਼ ਸਾਫ਼ ਨਹੀਂ ਮਿਲੀ। ਕਿਰਪਾ ਕਰਕੇ ਫਸਲ ਜਾਂ ਸਮੱਸਿਆ ਫਿਰ ਦੱਸੋ।',
+          _ => 'I could not hear that clearly. Please say the crop or problem again.',
+        };
+      case 'permission_denied':
+        return switch (lang) {
+          'hi' => 'वॉइस इनपुट के लिए माइक्रोफोन अनुमति दें।',
+          'pa' => 'ਵੋਇਸ ਇਨਪੁੱਟ ਲਈ ਮਾਈਕ੍ਰੋਫੋਨ ਦੀ ਇਜਾਜ਼ਤ ਦਿਓ।',
+          _ => 'Please allow microphone access to use voice input.',
+        };
+      default:
+        return switch (lang) {
+          'hi' => 'वॉइस इनपुट अभी उपलब्ध नहीं है। कृपया फिर कोशिश करें।',
+          'pa' => 'ਵੋਇਸ ਇਨਪੁੱਟ ਇਸ ਵੇਲੇ ਉਪਲਬਧ ਨਹੀਂ ਹੈ। ਕਿਰਪਾ ਕਰਕੇ ਫਿਰ ਕੋਸ਼ਿਸ਼ ਕਰੋ।',
+          _ => 'Voice input is not available right now. Please try again.',
+        };
+    }
   }
 
   @override

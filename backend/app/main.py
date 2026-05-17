@@ -21,6 +21,7 @@ from app.api.db import models as db_models
 from app.api.db.database import DATABASE_URL, engine
 from app.api.report import router as report_router
 from app.api.sync import router as sync_router
+from app.api.treatments import router as treatments_router
 from app.api.weather import router as weather_router
 from app.security import (
     ADMIN_API_TOKEN,
@@ -99,6 +100,7 @@ app.add_middleware(
 app.include_router(auth_router, prefix="/api/v1", tags=["Auth"])
 app.include_router(chat_router, prefix="/api/v1", tags=["Chat"])
 app.include_router(weather_router, prefix="/api/v1", tags=["Weather"])
+app.include_router(treatments_router, prefix="/api/v1", tags=["Treatments"])
 app.include_router(report_router, tags=["Reports"])
 app.include_router(sync_router, tags=["Sync"])
 

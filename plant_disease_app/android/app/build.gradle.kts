@@ -5,6 +5,16 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+dependencies {
+    // The ML Kit Flutter plugin references these script recognizers from Java.
+    // Adding the artifacts here prevents R8 release builds from failing on
+    // unresolved optional classes during shrinking.
+    implementation("com.google.mlkit:text-recognition-chinese:16.0.1")
+    implementation("com.google.mlkit:text-recognition-devanagari:16.0.1")
+    implementation("com.google.mlkit:text-recognition-japanese:16.0.1")
+    implementation("com.google.mlkit:text-recognition-korean:16.0.1")
+}
+
 android {
     namespace = "com.example.digital_mandi"
     compileSdk = flutter.compileSdkVersion
